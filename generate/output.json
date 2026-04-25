@@ -1,0 +1,32 @@
+{
+    "led_circuit": {
+        "components": [
+            "battery",
+            "resistor",
+            "led"
+        ],
+        "connections": [
+            "battery -> resistor -> led"
+        ]
+    },
+    "motor_circuit": {
+        "components": [
+            "battery",
+            "switch",
+            "motor"
+        ],
+        "connections": [
+            "battery -> switch -> motor"
+        ]
+    },
+    "buzzer_circuit": {
+        "components": [
+            "battery",
+            "resistor",
+            "buzzer"
+        ],
+        "connections": [
+            "battery -> resistor -> buzzer"
+        ]
+    }
+}
