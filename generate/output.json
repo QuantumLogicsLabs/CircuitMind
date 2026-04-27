@@ -1,97 +1,98 @@
 {
     "make me a LED circuit": {
-        "circuit_name": "LED Circuit",
+        "circuit_name": "Basic LED Circuit",
         "components": [
-            "battery",
-            "resistor",
-            "led"
+            "LED",
+            "Resistor",
+            "Battery"
         ],
         "connections": [
-            "battery -> resistor -> led"
+            "Battery -> Resistor -> LED"
         ],
         "confidence": "high",
-        "description": "Basic LED circuit with current limiting resistor"
+        "description": "Simple circuit to power an LED",
+        "source": "llm"
     },
     "I want a motor circuit": {
-        "circuit_name": "Motor Circuit",
+        "circuit_name": "Basic Motor Circuit",
         "components": [
-            "battery",
-            "switch",
-            "motor"
+            "DC Motor",
+            "Battery",
+            "Switch",
+            "Resistor"
         ],
         "connections": [
-            "battery -> switch -> motor"
+            "Battery -> Switch -> Resistor -> DC Motor"
         ],
         "confidence": "high",
-        "description": "Basic DC motor circuit with on/off switch"
+        "description": "A simple circuit to control a DC motor",
+        "source": "llm"
     },
     "buzzer circuit banao": {
-        "circuit_name": "Buzzer Circuit",
+        "circuit_name": "Simple Buzzer Circuit",
         "components": [
-            "battery",
-            "resistor",
-            "buzzer"
+            "Buzzer",
+            "Battery",
+            "Switch",
+            "Resistor"
         ],
         "connections": [
-            "battery -> resistor -> buzzer"
+            "Battery -> Switch -> Resistor -> Buzzer"
         ],
         "confidence": "high",
-        "description": "Buzzer circuit with resistor for sound output"
+        "description": "A basic circuit to produce sound using a buzzer",
+        "source": "llm"
     },
     "make a fan circuit": {
-        "circuit_name": "Fan Circuit",
+        "circuit_name": "Basic Fan Circuit",
         "components": [
-            "battery",
-            "switch",
-            "capacitor",
-            "fan"
+            "DC Motor",
+            "Power Supply",
+            "Switch",
+            "Capacitor"
         ],
         "connections": [
-            "battery -> switch -> capacitor -> fan"
+            "Power Supply -> Switch -> DC Motor",
+            "Capacitor -> DC Motor"
         ],
         "confidence": "high",
-        "description": "Fan circuit with capacitor for smooth startup"
+        "description": "A simple circuit to power a fan",
+        "source": "llm"
     },
-    "capacitor charging circuit": {
-        "circuit_name": "Capacitor Charging Circuit",
+    "temperature sensor circuit": {
+        "circuit_name": "Temperature Sensor Circuit",
         "components": [
-            "battery",
-            "resistor",
-            "capacitor"
+            "Thermistor",
+            "Resistor",
+            "Operational Amplifier",
+            "Microcontroller"
         ],
         "connections": [
-            "battery -> resistor -> capacitor"
+            "Thermistor -> Resistor -> Operational Amplifier -> Microcontroller"
         ],
-        "confidence": "medium",
-        "description": "RC circuit for charging a capacitor"
+        "confidence": "high",
+        "description": "A basic circuit to measure temperature using a thermistor",
+        "source": "llm"
     },
-    "button switch circuit": {
-        "circuit_name": "Switch Circuit",
+    "solar panel charging circuit": {
+        "circuit_name": "Solar Panel Charging Circuit",
         "components": [
-            "battery",
-            "switch",
-            "led"
+            "Solar Panel",
+            "Diode",
+            "Battery",
+            "Charge Controller",
+            "Resistor"
         ],
         "connections": [
-            "battery -> switch -> led"
+            "Solar Panel -> Diode -> Charge Controller -> Battery",
+            "Charge Controller -> Resistor -> Ground"
         ],
-        "confidence": "medium",
-        "description": "Simple switch controlled LED circuit"
-    },
-    "make me a robot": {
-        "circuit_name": "Unknown",
-        "components": [],
-        "connections": [],
-        "confidence": "low",
-        "description": "Circuit not recognized. Try: led, motor, buzzer, fan, capacitor"
+        "confidence": "high",
+        "description": "A basic circuit for charging a battery using a solar panel",
+        "source": "llm"
     },
     "empty_input": {
         "error": "Input cannot be empty",
-        "components": [],
-        "connections": []
-    },
-    "ab": {
-        "error": "Input too short, please describe your circuit",
         "components": [],
         "connections": []
     }
