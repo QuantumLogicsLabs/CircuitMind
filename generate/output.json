@@ -1,5 +1,6 @@
 {
-    "led_circuit": {
+    "make me a LED circuit": {
+        "circuit_name": "LED Circuit",
         "components": [
             "battery",
             "resistor",
@@ -7,9 +8,12 @@
         ],
         "connections": [
             "battery -> resistor -> led"
-        ]
+        ],
+        "confidence": "high",
+        "description": "Basic LED circuit with current limiting resistor"
     },
-    "motor_circuit": {
+    "I want a motor circuit": {
+        "circuit_name": "Motor Circuit",
         "components": [
             "battery",
             "switch",
@@ -17,9 +21,12 @@
         ],
         "connections": [
             "battery -> switch -> motor"
-        ]
+        ],
+        "confidence": "high",
+        "description": "Basic DC motor circuit with on/off switch"
     },
-    "buzzer_circuit": {
+    "buzzer circuit banao": {
+        "circuit_name": "Buzzer Circuit",
         "components": [
             "battery",
             "resistor",
@@ -27,6 +34,65 @@
         ],
         "connections": [
             "battery -> resistor -> buzzer"
-        ]
+        ],
+        "confidence": "high",
+        "description": "Buzzer circuit with resistor for sound output"
+    },
+    "make a fan circuit": {
+        "circuit_name": "Fan Circuit",
+        "components": [
+            "battery",
+            "switch",
+            "capacitor",
+            "fan"
+        ],
+        "connections": [
+            "battery -> switch -> capacitor -> fan"
+        ],
+        "confidence": "high",
+        "description": "Fan circuit with capacitor for smooth startup"
+    },
+    "capacitor charging circuit": {
+        "circuit_name": "Capacitor Charging Circuit",
+        "components": [
+            "battery",
+            "resistor",
+            "capacitor"
+        ],
+        "connections": [
+            "battery -> resistor -> capacitor"
+        ],
+        "confidence": "medium",
+        "description": "RC circuit for charging a capacitor"
+    },
+    "button switch circuit": {
+        "circuit_name": "Switch Circuit",
+        "components": [
+            "battery",
+            "switch",
+            "led"
+        ],
+        "connections": [
+            "battery -> switch -> led"
+        ],
+        "confidence": "medium",
+        "description": "Simple switch controlled LED circuit"
+    },
+    "make me a robot": {
+        "circuit_name": "Unknown",
+        "components": [],
+        "connections": [],
+        "confidence": "low",
+        "description": "Circuit not recognized. Try: led, motor, buzzer, fan, capacitor"
+    },
+    "empty_input": {
+        "error": "Input cannot be empty",
+        "components": [],
+        "connections": []
+    },
+    "ab": {
+        "error": "Input too short, please describe your circuit",
+        "components": [],
+        "connections": []
     }
 }
