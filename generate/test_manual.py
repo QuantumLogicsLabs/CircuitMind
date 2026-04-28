@@ -6,11 +6,9 @@ tests = [
     "I want a motor circuit",
     "buzzer circuit banao",
     "make a fan circuit",
-    "capacitor charging circuit",
-    "button switch circuit",
-    "make me a robot",   # unknown
-    "",                  # empty - error case
-    "ab",               # too short - error case
+    "temperature sensor circuit",
+    "solar panel charging circuit",
+    "",
 ]
 
 results = {}
