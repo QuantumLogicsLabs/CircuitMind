@@ -4,221 +4,257 @@ diagnose/diagnose_module.py
 
 Takes a circuit JSON as input, checks for common issues,
 and returns warning/error messages if something is wrong.
+
+Consistent with explain_module.py:
+  - Same POWER_SOURCES set
+  - Same NEEDS_CURRENT_LIMIT set
+  - Same CURRENT_LIMITERS set
+  - Component names use underscore (op_amp, power_supply, etc.)
 """
 
-import json
+from typing import Any
 
 
-# ── Rule Definitions ────────────────────────────────────────────────────────
+# ── Constants (mirror explain_module.py exactly) ─────────────────────────────
 
-POWER_SOURCES = {"battery", "power supply", "supply", "voltage source", "vcc", "v+"}
+POWER_SOURCES       = {"battery", "power_supply", "solar_cell"}
+NEEDS_CURRENT_LIMIT = {"led", "diode", "zener_diode"}
+CURRENT_LIMITERS    = {"resistor", "potentiometer", "mosfet", "transistor"}
 
-CURRENT_LIMITING_COMPONENTS = {"resistor"}
+# Positive terminal keywords — flexible, not fragile
+POSITIVE_KEYWORDS   = {"+", "pos", "positive", "anode", "vcc", "v+", "plus"}
 
-COMPONENTS_NEEDING_CURRENT_LIMIT = {"led", "diode"}
-
-COMPONENTS_NEEDING_POWER = {"led", "motor", "resistor", "capacitor", "transistor",
-                             "relay", "op-amp", "inductor"}
+# Ground / negative keywords for short circuit detection
+GROUND_KEYWORDS     = {"ground", "gnd", "0v", "v-", "negative", "common"}
 
 
-# ── Individual Check Functions ───────────────────────────────────────────────
+# ── Normalization Helper ──────────────────────────────────────────────────────
+
+def _normalize(name: str) -> str:
+    """Lowercase, strip, replace spaces and hyphens with underscore."""
+    return name.strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def _parse_connections(connections: list) -> list:
+    """
+    Parse connection strings into lists of nodes.
+    Supports '->' and '--' separators.
+    """
+    parsed = []
+    for conn in connections:
+        if "->" in conn:
+            nodes = [n.strip().lower() for n in conn.split("->")]
+        elif "--" in conn:
+            nodes = [n.strip().lower() for n in conn.split("--")]
+        else:
+            nodes = [conn.strip().lower()]
+        parsed.append(nodes)
+    return parsed
+
+
+# ── Check 1: Power Source ─────────────────────────────────────────────────────
 
 def check_power_source(components: list) -> str | None:
-    """Check if circuit has at least one power source."""
-    normalized = [c.strip().lower() for c in components]
-    for comp in normalized:
-        if comp in POWER_SOURCES:
-            return None  # power source found — no issue
-    return "Error: No power source found. Add a battery or power supply."
-
-
-def check_led_resistor(components: list) -> str | None:
-    """Check if LED is present without a current-limiting resistor."""
-    normalized = [c.strip().lower() for c in components]
-    has_led       = any(c in COMPONENTS_NEEDING_CURRENT_LIMIT for c in normalized)
-    has_resistor  = any(c in CURRENT_LIMITING_COMPONENTS for c in normalized)
-
-    if has_led and not has_resistor:
-        return "Warning: LED found without a current-limiting resistor. This may damage the LED."
+    if not any(c in POWER_SOURCES for c in components):
+        return "Error: No power source found. Add a battery or power supply."
     return None
 
 
+# ── Check 2: Current Limiting ─────────────────────────────────────────────────
+
+def check_current_limiting(components: list) -> list:
+    warnings = []
+    has_limiter = any(c in CURRENT_LIMITERS for c in components)
+    for comp in NEEDS_CURRENT_LIMIT:
+        if comp in components and not has_limiter:
+            warnings.append(
+                f"Warning: '{comp}' detected without a current-limiting component. "
+                f"Add a resistor to prevent burnout."
+            )
+    return warnings
+
+
+# ── Check 3: Empty Connections ────────────────────────────────────────────────
+
 def check_empty_connections(connections: list) -> str | None:
-    """Check if connections list is empty."""
     if not connections:
         return "Error: No connections defined. Components are not linked together."
     return None
 
 
-def check_floating_components(components: list, connections: list) -> list:
-    """
-    Check if any component is not mentioned in any connection.
-    A component not in any connection is 'floating' (disconnected).
-    """
-    warnings = []
-    # Flatten all connection strings into one big string for lookup
-    all_connections_text = " ".join(connections).lower()
+# ── Check 4: Short Circuit (improved — multi-node path aware) ─────────────────
 
-    for component in components:
-        comp_lower = component.strip().lower()
-        # Skip power sources — they are often implied
-        if comp_lower in POWER_SOURCES:
+def check_short_circuit(connections: list) -> list:
+    """
+    Detects short circuits across paths of ANY length.
+    A short circuit = power source reaches ground with no load in between.
+
+    Catches:
+      battery -> ground                  (2 nodes)
+      battery -> wire -> ground          (3 nodes)
+      battery -> n1 -> n2 -> gnd        (4+ nodes)
+    """
+    errors = []
+
+    def _is_power(node: str) -> bool:
+        return _normalize(node) in POWER_SOURCES
+
+    def _is_ground(node: str) -> bool:
+        n = _normalize(node)
+        return n in GROUND_KEYWORDS or n.startswith("gnd") or n.startswith("ground")
+
+    # Labels that are pure wires/nets — not real load components
+    WIRE_LABELS = {"wire", "node", "net", "junction", "point", "trace"}
+
+    def _is_load(node: str) -> bool:
+        n = _normalize(node)
+        if n in POWER_SOURCES or n in GROUND_KEYWORDS:
+            return False
+        # Exclude pure wire/net labels (e.g. wire, node1, node2, net_a)
+        for label in WIRE_LABELS:
+            if n.startswith(label):
+                return False
+        return True
+
+    # Build graph from connections
+    graph: dict = {}
+    for path in _parse_connections(connections):
+        for i in range(len(path) - 1):
+            src, dst = path[i], path[i + 1]
+            graph.setdefault(src, []).append(dst)
+
+    # BFS from each power source
+    for start_node in list(graph.keys()):
+        if not _is_power(start_node):
             continue
-        if comp_lower not in all_connections_text:
+
+        queue   = [(start_node, [start_node], False)]
+        visited = set()
+
+        while queue:
+            current, path_so_far, passed_load = queue.pop(0)
+            if current in visited:
+                continue
+            visited.add(current)
+
+            for neighbor in graph.get(current, []):
+                if _is_ground(neighbor):
+                    if not passed_load:
+                        short_path = " -> ".join(path_so_far + [neighbor])
+                        errors.append(
+                            f"Error: Short circuit detected — power reaches ground with no load. "
+                            f"Path: [{short_path}]"
+                        )
+                    continue
+                next_passed_load = passed_load or _is_load(neighbor)
+                queue.append((neighbor, path_so_far + [neighbor], next_passed_load))
+
+    return errors
+
+
+# ── Check 5: Floating Components ──────────────────────────────────────────────
+
+def check_floating_components(components: list, connections: list) -> list:
+    warnings     = []
+    all_conn_text = " ".join(connections).lower()
+
+    for comp in components:
+        if comp in POWER_SOURCES:
+            continue
+        if comp not in all_conn_text and comp.replace("_", " ") not in all_conn_text:
             warnings.append(
-                f"Warning: '{component}' is not found in any connection. "
-                f"It may be disconnected (floating)."
+                f"Warning: '{comp}' is not found in any connection. "
+                f"It may be floating (disconnected)."
             )
     return warnings
 
 
-def check_short_circuit(connections: list) -> str | None:
-    """
-    Basic short circuit check:
-    If battery/supply connects directly to ground with no component in between.
-    """
-    for connection in connections:
-        parts = [p.strip().lower() for p in connection.split("->")]
-        if len(parts) == 2:
-            if parts[0] in POWER_SOURCES and parts[1] in {"ground", "gnd"}:
-                return "Error: Direct connection from power source to ground detected. This is a short circuit."
-    return None
-
-
-def check_motor_no_power(components: list) -> str | None:
-    """Check if motor is present but no power source exists."""
-    normalized = [c.strip().lower() for c in components]
-    has_motor  = "motor" in normalized
-    has_power  = any(c in POWER_SOURCES for c in normalized)
-
-    if has_motor and not has_power:
-        return "Warning: Motor found but no power source detected."
-    return None
-
+# ── Check 6: Capacitor Polarity (improved — flexible keyword matching) ────────
 
 def check_capacitor_polarity(components: list, connections: list) -> str | None:
-    """
-    Warn if capacitor is present but no polarity hint (+/-) is in connections.
-    Basic check for electrolytic capacitor misuse.
-    """
-    normalized = [c.strip().lower() for c in components]
-    if "capacitor" in normalized:
-        all_text = " ".join(connections).lower()
-        if "c1.+" not in all_text and "cap+" not in all_text:
-            return (
-                "Info: Capacitor detected. Ensure correct polarity "
-                "if using an electrolytic capacitor."
-            )
+    if "capacitor" not in components:
+        return None
+
+    all_conn_text = " ".join(connections).lower()
+    polarity_specified = any(kw in all_conn_text for kw in POSITIVE_KEYWORDS)
+
+    if not polarity_specified:
+        return (
+            "Info: Capacitor detected but no polarity indication found in connections. "
+            "Ensure correct polarity if using an electrolytic capacitor."
+        )
     return None
 
 
-# ── Main Diagnose Function ───────────────────────────────────────────────────
+# ── Main Diagnose Function ────────────────────────────────────────────────────
 
-def diagnose_circuit(circuit_json: dict) -> list:
+def diagnose_circuit(circuit_json: dict) -> dict:
     """
     Main function — runs all checks on the circuit JSON.
 
     Args:
-        circuit_json (dict): Circuit data with keys:
-            - circuit_name (str, optional)
-            - components   (list of str)
-            - connections  (list of str)
+        circuit_json (dict): keys — circuit_name, components, connections
 
     Returns:
-        list: A list of warning/error strings.
-              Empty list means no issues found.
+        dict: circuit_name, issues (list), passed (bool)
     """
-    components  = circuit_json.get("components", [])
-    connections = circuit_json.get("connections", [])
-    issues      = []
+    if not isinstance(circuit_json, dict):
+        return {"circuit_name": "Unknown", "issues": ["Error: Input must be a JSON object."], "passed": False}
 
-    # Run all checks
-    checks = [
-        check_power_source(components),
-        check_led_resistor(components),
-        check_empty_connections(connections),
-        check_short_circuit(connections),
-        check_motor_no_power(components),
-        check_capacitor_polarity(components, connections),
-    ]
+    circuit_name = circuit_json.get("circuit_name", "Unnamed Circuit")
+    raw_comps    = circuit_json.get("components", [])
+    raw_conns    = circuit_json.get("connections", [])
 
-    # Add single-result checks
-    for result in checks:
-        if result is not None:
-            issues.append(result)
+    components  = [_normalize(c) for c in raw_comps]
+    connections = raw_conns
 
-    # Add floating component warnings (returns a list)
+    issues = []
+
+    r = check_power_source(components)
+    if r: issues.append(r)
+
+    issues.extend(check_current_limiting(components))
+
+    r = check_empty_connections(connections)
+    if r: issues.append(r)
+
+    issues.extend(check_short_circuit(connections))
     issues.extend(check_floating_components(components, connections))
 
-    return issues
+    r = check_capacitor_polarity(components, connections)
+    if r: issues.append(r)
+
+    return {"circuit_name": circuit_name, "issues": issues, "passed": len(issues) == 0}
 
 
-def run_diagnosis(circuit_json: dict) -> str:
-    """
-    Wrapper that returns a formatted string output.
-    Convenient for printing results.
-    """
-    name   = circuit_json.get("circuit_name", "Circuit")
-    issues = diagnose_circuit(circuit_json)
-
-    print(f"Diagnosing: {name}")
-    print("-" * 50)
-
-    if not issues:
-        result = "✅ No issues found. Circuit looks valid."
+def pretty_print(result: dict) -> None:
+    print("\n" + "=" * 60)
+    print(f"Diagnosing: {result['circuit_name']}")
+    print("-" * 60)
+    if result["passed"]:
+        print("✅ No issues found. Circuit looks valid.")
     else:
-        result = "\n".join(issues)
-
-    print(result)
-    print()
-    return result
+        for issue in result["issues"]:
+            prefix = "❌" if issue.startswith("Error") else "⚠️ " if issue.startswith("Warning") else "ℹ️ "
+            print(f"{prefix} {issue}")
 
 
-# ── Test Cases ───────────────────────────────────────────────────────────────
+# ── Test Cases ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    tests = [
+        {"circuit_name": "LED Without Resistor",     "components": ["battery", "led"],                          "connections": ["battery -> led"]},
+        {"circuit_name": "Valid LED Circuit",         "components": ["battery", "resistor", "led"],              "connections": ["battery -> resistor -> led"]},
+        {"circuit_name": "No Power Source",           "components": ["resistor", "led"],                         "connections": ["resistor -> led"]},
+        {"circuit_name": "Short Circuit (2 nodes)",   "components": ["battery", "ground"],                       "connections": ["battery -> ground"]},
+        {"circuit_name": "Short Circuit (3 nodes)",   "components": ["battery", "wire", "ground"],               "connections": ["battery -> wire -> ground"]},
+        {"circuit_name": "Short Circuit (4 nodes)",   "components": ["battery", "node1", "node2", "gnd"],        "connections": ["battery -> node1 -> node2 -> gnd"]},
+        {"circuit_name": "Empty Connections",         "components": ["battery", "resistor", "led"],              "connections": []},
+        {"circuit_name": "Floating Motor",            "components": ["battery", "resistor", "led", "motor"],     "connections": ["battery -> resistor -> led"]},
+        {"circuit_name": "Capacitor No Polarity",     "components": ["battery", "resistor", "capacitor"],        "connections": ["battery -> resistor -> capacitor"]},
+        {"circuit_name": "Capacitor With Polarity",   "components": ["battery", "resistor", "capacitor"],        "connections": ["battery -> resistor -> capacitor_positive -> gnd"]},
+        {"circuit_name": "Op-Amp Circuit",            "components": ["battery", "resistor", "op_amp"],           "connections": ["battery -> resistor -> op_amp"]},
+    ]
 
-    # Test 1 — From task description: LED without resistor
-    test1 = {
-        "circuit_name": "LED Without Resistor",
-        "components": ["battery", "led"],
-        "connections": ["battery -> led"]
-    }
-
-    # Test 2 — Valid LED circuit
-    test2 = {
-        "circuit_name": "Valid LED Circuit",
-        "components": ["battery", "resistor", "led"],
-        "connections": ["battery -> resistor -> led"]
-    }
-
-    # Test 3 — No power source
-    test3 = {
-        "circuit_name": "No Power Source",
-        "components": ["resistor", "led"],
-        "connections": ["resistor -> led"]
-    }
-
-    # Test 4 — Short circuit
-    test4 = {
-        "circuit_name": "Short Circuit",
-        "components": ["battery", "ground"],
-        "connections": ["battery -> ground"]
-    }
-
-    # Test 5 — No connections at all
-    test5 = {
-        "circuit_name": "Empty Connections",
-        "components": ["battery", "resistor", "led"],
-        "connections": []
-    }
-
-    # Test 6 — Floating component
-    test6 = {
-        "circuit_name": "Floating Motor",
-        "components": ["battery", "resistor", "led", "motor"],
-        "connections": ["battery -> resistor -> led"]
-    }
-
-    for test in [test1, test2, test3, test4, test5, test6]:
-        run_diagnosis(test)
+    for test in tests:
+        pretty_print(diagnose_circuit(test))
