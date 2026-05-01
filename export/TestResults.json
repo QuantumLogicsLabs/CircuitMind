@@ -1,0 +1,31 @@
+[
+    {
+        "status": "success",
+        "circuit_name": "LED Circuit",
+        "components": "battery, resistor, led",
+        "connections": "battery → resistor → led",
+        "spice_netlist": "LED Circuit\nV1 1 2 9V\nR2 2 3 330ohm\nD3 3 4 LED\n.end"
+    },
+    {
+        "status": "success",
+        "circuit_name": "Motor Circuit",
+        "components": "battery, switch, motor",
+        "connections": "battery → switch → motor",
+        "spice_netlist": "Motor Circuit\nV1 1 2 9V\nS2 2 3 SW\nM3 3 4 MOTOR\n.end"
+    },
+    {
+        "status": "success",
+        "circuit_name": "Fan Circuit",
+        "components": "battery, switch, capacitor, motor",
+        "connections": "battery → switch → capacitor → motor",
+        "spice_netlist": "Fan Circuit\nV1 1 2 9V\nS2 2 3 SW\nC3 3 4 100uF\nM4 4 5 MOTOR\n.end"
+    },
+    {
+        "status": "error",
+        "message": "Input is empty."
+    },
+    {
+        "status": "error",
+        "message": "Invalid JSON input."
+    }
+]
