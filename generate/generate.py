@@ -1,24 +1,26 @@
 import json
+import os
 from groq import Groq
 
 
 def validate_input(prompt: str) -> str:
-
-    if not prompt or len(prompt.strip()) == 0:
-        raise ValueError("Input cannot be empty")
+    
+    if not prompt or len(prompt.strip())==0:
+        raise ValueError("Input cannot be empty. Try like make me a LED circuit")
     if len(prompt.strip()) < 3:
-        raise ValueError("Input too short, please describe your circuit")
+        raise ValueError("Input too short. Try like make me a LED circuit")
     if len(prompt) > 300:
-        raise ValueError("Input too long, keep it under 300 characters")
+        raise ValueError("Input too long. keep it under 300 characters")
     return prompt.strip()
 
 
 def generate_with_rules(prompt: str) -> dict:
-    """Fallback rule-based generation if LLM fails"""
-    prompt = prompt.lower()
+
+    prompt=prompt.lower()
 
     if "led" in prompt or "light" in prompt:
-        return {
+        return 
+        {
             "circuit_name": "LED Circuit",
             "components": ["battery", "resistor", "led"],
             "connections": ["battery -> resistor -> led"],
@@ -27,7 +29,8 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "motor" in prompt:
-        return {
+        return 
+        {
             "circuit_name": "Motor Circuit",
             "components": ["battery", "switch", "motor"],
             "connections": ["battery -> switch -> motor"],
@@ -36,7 +39,8 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "buzzer" in prompt:
-        return {
+        return 
+        {
             "circuit_name": "Buzzer Circuit",
             "components": ["battery", "resistor", "buzzer"],
             "connections": ["battery -> resistor -> buzzer"],
@@ -45,7 +49,8 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "fan" in prompt:
-        return {
+        return 
+        {
             "circuit_name": "Fan Circuit",
             "components": ["battery", "switch", "capacitor", "fan"],
             "connections": ["battery -> switch -> capacitor -> fan"],
@@ -53,72 +58,109 @@ def generate_with_rules(prompt: str) -> dict:
             "description": "Fan circuit with capacitor for smooth startup",
             "source": "rule-based"
         }
-    else:
+    elif "temperature" in prompt or "sensor" in prompt:
+        return 
+        {
+            "circuit_name": "Temperature Sensor Circuit",
+            "components": ["battery", "thermistor", "resistor", "microcontroller"],
+            "connections": ["battery -> thermistor -> resistor -> microcontroller"],
+            "confidence": "medium",
+            "description": "Temperature sensing circuit using thermistor",
+            "source": "rule-based"
+        }
+    elif "solar" in prompt:
         return {
+            "circuit_name": "Solar Charging Circuit",
+            "components": ["solar panel", "diode", "charge controller", "battery"],
+            "connections": ["solar panel -> diode -> charge controller -> battery"],
+            "confidence": "medium",
+            "description": "Solar panel battery charging circuit",
+            "source": "rule-based"
+        }
+    else:
+        return 
+        {
             "circuit_name": "Unknown",
             "components": [],
             "connections": [],
             "confidence": "low",
-            "description": "Circuit not recognized",
+            "description": "Circuit not recognized. Try: led, motor, buzzer, fan, temperature, solar",
             "source": "rule-based"
         }
 
 
 def generate_with_llm(prompt: str) -> dict:
-    """Use Groq LLM to generate circuit JSON"""
-    client = Groq()
+    
+    # Check if API key exists
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY not set. Set it as environment variable.")
+
+    client = Groq(api_key=api_key)
 
     chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "system",
-                "content": """You are a circuit generator AI. 
-Convert user requests into circuit JSON.
-Reply ONLY with valid JSON, nothing else, no explanation."""
+                "content": """You are a circuit generator AI.
+                Convert user requests into circuit JSON.
+                Reply ONLY with valid JSON, no explanation, no markdown, no code blocks."""
             },
+
             {
                 "role": "user",
                 "content": f"""Convert this into a circuit JSON:
-"{prompt}"
+                "{prompt}"
 
-Use exactly this format:
-{{
-  "circuit_name": "name of circuit",
-  "components": ["component1", "component2"],
-  "connections": ["comp1 -> comp2 -> comp3"],
-  "confidence": "high",
-  "description": "one line explanation"
-}}"""
+                Use exactly this format:
+                {{
+                "circuit_name": "name of circuit",
+                "components": ["component1", "component2"],
+                "connections": ["comp1 -> comp2 -> comp3"],
+                "confidence": "high",
+                "description": "one line explanation"
+                }}"""
             }
         ],
         model="llama-3.3-70b-versatile",
     )
 
     raw = chat_completion.choices[0].message.content
-    result = json.loads(raw)
-    result["source"] = "llm"
-    return result
+
+    try:
+        # Clean response in case LLM adds extra text
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        result = json.loads(raw)
+        result["source"] = "llm"
+        return result
+
+    except json.JSONDecodeError as e:
+        raise ValueError(f"LLM returned invalid JSON: {e}")
 
 
 def generate_circuit(user_prompt: str) -> dict:
 
-    #1: Validate input
     try:
         clean_prompt = validate_input(user_prompt)
     except ValueError as e:
         return {
             "error": str(e),
+            "error_code": "INVALID_INPUT",
             "components": [],
             "connections": []
         }
 
-    #2 Try LLM first
     try:
         print("Asking Groq AI...")
         result = generate_with_llm(clean_prompt)
         return result
 
-    #3 If LLM fails, use rules
     except Exception as e:
-        print(f"LLM failed: {e}, using rule-based fallback")
+        print(f"LLM failed ({e}), using rule-based fallback...")
         return generate_with_rules(clean_prompt)

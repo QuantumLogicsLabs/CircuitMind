@@ -1,6 +1,6 @@
 {
     "make me a LED circuit": {
-        "circuit_name": "Basic LED Circuit",
+        "circuit_name": "Simple LED",
         "components": [
             "LED",
             "Resistor",
@@ -10,19 +10,19 @@
             "Battery -> Resistor -> LED"
         ],
         "confidence": "high",
-        "description": "Simple circuit to power an LED",
+        "description": "Basic LED lighting circuit",
         "source": "llm"
     },
     "I want a motor circuit": {
         "circuit_name": "Basic Motor Circuit",
         "components": [
             "DC Motor",
-            "Battery",
+            "Power Supply",
             "Switch",
-            "Resistor"
+            "Diode"
         ],
         "connections": [
-            "Battery -> Switch -> Resistor -> DC Motor"
+            "Power Supply -> Switch -> DC Motor -> Diode"
         ],
         "confidence": "high",
         "description": "A simple circuit to control a DC motor",
@@ -40,47 +40,46 @@
             "Battery -> Switch -> Resistor -> Buzzer"
         ],
         "confidence": "high",
-        "description": "A basic circuit to produce sound using a buzzer",
+        "description": "A basic circuit to produce sound from a buzzer",
         "source": "llm"
     },
     "make a fan circuit": {
-        "circuit_name": "Basic Fan Circuit",
+        "circuit_name": "Simple Fan Circuit",
         "components": [
-            "DC Motor",
-            "Power Supply",
-            "Switch",
-            "Capacitor"
+            "DC Power Source",
+            "Diode",
+            "Fan Motor",
+            "Resistor",
+            "Switch"
         ],
         "connections": [
-            "Power Supply -> Switch -> DC Motor",
-            "Capacitor -> DC Motor"
+            "DC Power Source -> Switch -> Diode -> Resistor -> Fan Motor"
         ],
         "confidence": "high",
-        "description": "A simple circuit to power a fan",
+        "description": "A basic circuit to control a DC fan",
         "source": "llm"
     },
     "temperature sensor circuit": {
         "circuit_name": "Temperature Sensor Circuit",
         "components": [
-            "Thermistor",
-            "Resistor",
-            "Operational Amplifier",
+            "LM35 Temperature Sensor",
+            "Voltage Regulator",
             "Microcontroller"
         ],
         "connections": [
-            "Thermistor -> Resistor -> Operational Amplifier -> Microcontroller"
+            "LM35 -> Voltage Regulator -> Microcontroller"
         ],
         "confidence": "high",
-        "description": "A basic circuit to measure temperature using a thermistor",
+        "description": "A simple circuit to measure temperature using an LM35 sensor",
         "source": "llm"
     },
     "solar panel charging circuit": {
         "circuit_name": "Solar Panel Charging Circuit",
         "components": [
             "Solar Panel",
-            "Diode",
-            "Battery",
             "Charge Controller",
+            "Battery",
+            "Diode",
             "Resistor"
         ],
         "connections": [
@@ -88,11 +87,60 @@
             "Charge Controller -> Resistor -> Ground"
         ],
         "confidence": "high",
-        "description": "A basic circuit for charging a battery using a solar panel",
+        "description": "Circuit for charging a battery using a solar panel",
         "source": "llm"
     },
-    "empty_input": {
-        "error": "Input cannot be empty",
+    "make me a bluetooth speaker ci...": {
+        "circuit_name": "Bluetooth Speaker Circuit",
+        "components": [
+            "Bluetooth Module",
+            "Audio Amplifier",
+            "Loudspeaker",
+            "Power Supply",
+            "Microcontroller"
+        ],
+        "connections": [
+            "Bluetooth Module -> Microcontroller -> Audio Amplifier -> Loudspeaker",
+            "Power Supply -> Microcontroller",
+            "Power Supply -> Audio Amplifier"
+        ],
+        "confidence": "high",
+        "description": "A simple circuit to create a Bluetooth speaker",
+        "source": "llm"
+    },
+    "alarm system circuit": {
+        "circuit_name": "Alarm System",
+        "components": [
+            "Sensor",
+            "Siren",
+            "Microcontroller",
+            "Battery",
+            "Switch"
+        ],
+        "connections": [
+            "Sensor -> Microcontroller -> Siren",
+            "Battery -> Microcontroller",
+            "Switch -> Microcontroller"
+        ],
+        "confidence": "high",
+        "description": "A basic alarm system circuit with sensor and siren",
+        "source": "llm"
+    },
+    "": {
+        "error": "Input cannot be empty. Try like make me a LED circuit",
+        "error_code": "INVALID_INPUT",
+        "components": [],
+        "connections": []
+    },
+    "ab": {
+        "error": "Input too short. Try like make me a LED circuit",
+        "error_code": "INVALID_INPUT",
+        "components": [],
+        "connections": []
+    },
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...": {
+        "error": "Input too long. keep it under 300 characters",
+        "error_code": "INVALID_INPUT",
         "components": [],
         "connections": []
     }
