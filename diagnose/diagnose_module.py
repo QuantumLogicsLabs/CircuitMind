@@ -19,7 +19,8 @@ from typing import Any
 
 POWER_SOURCES       = {"battery", "power_supply", "solar_cell"}
 NEEDS_CURRENT_LIMIT = {"led", "diode", "zener_diode"}
-CURRENT_LIMITERS    = {"resistor", "potentiometer", "mosfet", "transistor"}
+CURRENT_LIMITERS    = {"resistor", "potentiometer", "mosfet", "transistor",
+                       "npn_transistor", "pnp_transistor"}
 
 # Positive terminal keywords — flexible, not fragile
 POSITIVE_KEYWORDS   = {"+", "pos", "positive", "anode", "vcc", "v+", "plus"}
