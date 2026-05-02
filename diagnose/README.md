@@ -185,6 +185,3 @@ Component names use **underscore** format: `op_amp`, `npn_transistor`, `power_su
 
 ---
 
-## 👤 Author
-
-Ubaidullah — CircuitMind Internship, Quantum Logics Labs
