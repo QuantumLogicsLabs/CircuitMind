@@ -10,22 +10,21 @@
             "Battery -> Resistor -> LED"
         ],
         "confidence": "high",
-        "description": "Basic LED lighting circuit",
+        "description": "Basic circuit to power an LED",
         "source": "llm"
     },
     "I want a motor circuit": {
-        "circuit_name": "Basic Motor Circuit",
+        "circuit_name": "Simple DC Motor Circuit",
         "components": [
             "DC Motor",
-            "Power Supply",
-            "Switch",
-            "Diode"
+            "Battery",
+            "Switch"
         ],
         "connections": [
-            "Power Supply -> Switch -> DC Motor -> Diode"
+            "Battery -> Switch -> DC Motor"
         ],
         "confidence": "high",
-        "description": "A simple circuit to control a DC motor",
+        "description": "Basic circuit to control a DC motor",
         "source": "llm"
     },
     "buzzer circuit banao": {
@@ -40,54 +39,87 @@
             "Battery -> Switch -> Resistor -> Buzzer"
         ],
         "confidence": "high",
-        "description": "A basic circuit to produce sound from a buzzer",
+        "description": "A basic circuit to produce sound using a buzzer",
         "source": "llm"
     },
     "make a fan circuit": {
         "circuit_name": "Simple Fan Circuit",
         "components": [
-            "DC Power Source",
-            "Diode",
-            "Fan Motor",
-            "Resistor",
-            "Switch"
+            "DC Motor",
+            "Switch",
+            "Power Source",
+            "Capacitor",
+            "Resistor"
         ],
         "connections": [
-            "DC Power Source -> Switch -> Diode -> Resistor -> Fan Motor"
+            "Power Source -> Switch -> DC Motor",
+            "Capacitor -> Motor",
+            "Resistor -> Switch"
         ],
         "confidence": "high",
-        "description": "A basic circuit to control a DC fan",
+        "description": "A basic circuit to control a fan using a DC motor",
         "source": "llm"
     },
     "temperature sensor circuit": {
-        "circuit_name": "Temperature Sensor Circuit",
+        "circuit_name": "temperature sensor circuit",
         "components": [
-            "LM35 Temperature Sensor",
-            "Voltage Regulator",
-            "Microcontroller"
+            "thermistor",
+            "operational amplifier",
+            "microcontroller"
         ],
         "connections": [
-            "LM35 -> Voltage Regulator -> Microcontroller"
+            "thermistor -> operational amplifier -> microcontroller"
         ],
         "confidence": "high",
-        "description": "A simple circuit to measure temperature using an LM35 sensor",
+        "description": "monitors temperature changes using a thermistor",
         "source": "llm"
     },
     "solar panel charging circuit": {
         "circuit_name": "Solar Panel Charging Circuit",
         "components": [
             "Solar Panel",
-            "Charge Controller",
-            "Battery",
             "Diode",
+            "Battery",
+            "Charge Controller",
             "Resistor"
         ],
         "connections": [
             "Solar Panel -> Diode -> Charge Controller -> Battery",
-            "Charge Controller -> Resistor -> Ground"
+            "Charge Controller -> Resistor -> Battery"
         ],
         "confidence": "high",
-        "description": "Circuit for charging a battery using a solar panel",
+        "description": "A circuit to charge a battery using a solar panel",
+        "source": "llm"
+    },
+    "555 timer circuit": {
+        "circuit_name": "555 Timer Circuit",
+        "components": [
+            "NE555P Timer IC",
+            "Resistor 1k",
+            "Resistor 10k",
+            "Capacitor 10uF",
+            "Capacitor 100nF",
+            "Diode 1N4148"
+        ],
+        "connections": [
+            "NE555P Timer IC -> Resistor 1k -> Resistor 10k -> Capacitor 10uF",
+            "NE555P Timer IC -> Diode 1N4148 -> Capacitor 100nF"
+        ],
+        "confidence": "high",
+        "description": "A widely used IC for generating astable or monostable pulses",
+        "source": "llm"
+    },
+    "rc filter circuit": {
+        "circuit_name": "RC Filter",
+        "components": [
+            "Resistor",
+            "Capacitor"
+        ],
+        "connections": [
+            "Resistor -> Capacitor -> Ground"
+        ],
+        "confidence": "high",
+        "description": "A simple low-pass filter circuit",
         "source": "llm"
     },
     "make me a bluetooth speaker ci...": {
@@ -100,46 +132,44 @@
             "Microcontroller"
         ],
         "connections": [
-            "Bluetooth Module -> Microcontroller -> Audio Amplifier -> Loudspeaker",
-            "Power Supply -> Microcontroller",
-            "Power Supply -> Audio Amplifier"
+            "Bluetooth Module -> Microcontroller -> Audio Amplifier -> Loudspeaker"
         ],
         "confidence": "high",
-        "description": "A simple circuit to create a Bluetooth speaker",
+        "description": "A circuit to create a wireless Bluetooth speaker",
         "source": "llm"
     },
     "alarm system circuit": {
-        "circuit_name": "Alarm System",
+        "circuit_name": "Alarm System Circuit",
         "components": [
             "Sensor",
             "Siren",
             "Microcontroller",
-            "Battery",
-            "Switch"
+            "Power Source",
+            "Keypad"
         ],
         "connections": [
             "Sensor -> Microcontroller -> Siren",
-            "Battery -> Microcontroller",
-            "Switch -> Microcontroller"
+            "Keypad -> Microcontroller",
+            "Power Source -> Microcontroller -> Siren"
         ],
         "confidence": "high",
-        "description": "A basic alarm system circuit with sensor and siren",
+        "description": "A basic circuit for an alarm system with sensor, siren, and keypad",
         "source": "llm"
     },
     "": {
-        "error": "Input cannot be empty. Try like make me a LED circuit",
+        "error": "Input cannot be empty. Try make me a LED circuit",
         "error_code": "INVALID_INPUT",
         "components": [],
         "connections": []
     },
     "ab": {
-        "error": "Input too short. Try like make me a LED circuit",
+        "error": "Input too short. Try make me a LED circuit",
         "error_code": "INVALID_INPUT",
         "components": [],
         "connections": []
     },
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...": {
-        "error": "Input too long. keep it under 300 characters",
+        "error": "Input too long. Keep it under 1000 characters",
         "error_code": "INVALID_INPUT",
         "components": [],
         "connections": []

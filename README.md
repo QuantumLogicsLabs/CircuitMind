@@ -184,6 +184,7 @@ accelerate>=0.29.0
 bitsandbytes>=0.43.0
 wandb>=0.16.0
 groq>=0.4.0
+python-dotenv
 ```
 
 ---

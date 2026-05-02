@@ -1,26 +1,36 @@
 import json
 import os
-from groq import Groq
+
+try:
+    from groq import Groq
+    GROQ_AVAILABLE = True
+except ImportError:
+    GROQ_AVAILABLE = False
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 
 def validate_input(prompt: str) -> str:
-    
-    if not prompt or len(prompt.strip())==0:
-        raise ValueError("Input cannot be empty. Try like make me a LED circuit")
+    """Validate user input before processing"""
+    if not prompt or len(prompt.strip()) == 0:
+        raise ValueError("Input cannot be empty. Try make me a LED circuit")
     if len(prompt.strip()) < 3:
-        raise ValueError("Input too short. Try like make me a LED circuit")
-    if len(prompt) > 300:
-        raise ValueError("Input too long. keep it under 300 characters")
+        raise ValueError("Input too short. Try make me a LED circuit")
+    if len(prompt) > 1000:
+        raise ValueError("Input too long. Keep it under 1000 characters")
     return prompt.strip()
 
 
 def generate_with_rules(prompt: str) -> dict:
-
-    prompt=prompt.lower()
+    """Rule-based fallback when LLM is unavailable"""
+    prompt = prompt.lower()
 
     if "led" in prompt or "light" in prompt:
-        return 
-        {
+        return {
             "circuit_name": "LED Circuit",
             "components": ["battery", "resistor", "led"],
             "connections": ["battery -> resistor -> led"],
@@ -29,8 +39,7 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "motor" in prompt:
-        return 
-        {
+        return {
             "circuit_name": "Motor Circuit",
             "components": ["battery", "switch", "motor"],
             "connections": ["battery -> switch -> motor"],
@@ -39,8 +48,7 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "buzzer" in prompt:
-        return 
-        {
+        return {
             "circuit_name": "Buzzer Circuit",
             "components": ["battery", "resistor", "buzzer"],
             "connections": ["battery -> resistor -> buzzer"],
@@ -49,8 +57,7 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "fan" in prompt:
-        return 
-        {
+        return {
             "circuit_name": "Fan Circuit",
             "components": ["battery", "switch", "capacitor", "fan"],
             "connections": ["battery -> switch -> capacitor -> fan"],
@@ -59,12 +66,11 @@ def generate_with_rules(prompt: str) -> dict:
             "source": "rule-based"
         }
     elif "temperature" in prompt or "sensor" in prompt:
-        return 
-        {
+        return {
             "circuit_name": "Temperature Sensor Circuit",
             "components": ["battery", "thermistor", "resistor", "microcontroller"],
             "connections": ["battery -> thermistor -> resistor -> microcontroller"],
-            "confidence": "medium",
+            "confidence": "high",
             "description": "Temperature sensing circuit using thermistor",
             "source": "rule-based"
         }
@@ -73,32 +79,56 @@ def generate_with_rules(prompt: str) -> dict:
             "circuit_name": "Solar Charging Circuit",
             "components": ["solar panel", "diode", "charge controller", "battery"],
             "connections": ["solar panel -> diode -> charge controller -> battery"],
-            "confidence": "medium",
+            "confidence": "high",
             "description": "Solar panel battery charging circuit",
             "source": "rule-based"
         }
+    elif "555" in prompt or "timer" in prompt:
+        return {
+            "circuit_name": "555 Timer Circuit",
+            "components": ["battery", "555-timer", "resistor", "capacitor", "led"],
+            "connections": ["battery -> 555-timer -> resistor -> capacitor -> led"],
+            "confidence": "high",
+            "description": "555 timer astable multivibrator circuit",
+            "source": "rule-based"
+        }
+    elif "rc" in prompt or "filter" in prompt:
+        return {
+            "circuit_name": "RC Filter Circuit",
+            "components": ["resistor", "capacitor"],
+            "connections": ["input -> resistor -> capacitor -> ground"],
+            "confidence": "high",
+            "description": "RC low pass filter circuit",
+            "source": "rule-based"
+        }
     else:
-        return 
-        {
+        return {
             "circuit_name": "Unknown",
             "components": [],
             "connections": [],
             "confidence": "low",
-            "description": "Circuit not recognized. Try: led, motor, buzzer, fan, temperature, solar",
+            "description": "Circuit not recognized. Try: led, motor, buzzer, fan, temperature, solar, 555 timer, rc filter",
             "source": "rule-based"
         }
 
 
 def generate_with_llm(prompt: str) -> dict:
-    
-    # Check if API key exists
-    api_key = os.environ.get("GROQ_API_KEY")
+    """
+    Use Groq AI to generate circuit JSON
+    Setup: Set GROQ_API_KEY in .env file
+    Get free key from: https://console.groq.com
+    """
+
+    if not GROQ_AVAILABLE:
+        raise ValueError("Groq not installed. Run: pip install groq")
+
+    api_key=os.environ.get("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("GROQ_API_KEY not set. Set it as environment variable.")
+        raise ValueError("GROQ_API_KEY not set")
 
-    client = Groq(api_key=api_key)
+    client=Groq(api_key=api_key)
 
-    chat_completion = client.chat.completions.create(
+    chat_completion=client.chat.completions.create(
         messages=[
             {
                 "role": "system",
@@ -110,6 +140,7 @@ def generate_with_llm(prompt: str) -> dict:
             {
                 "role": "user",
                 "content": f"""Convert this into a circuit JSON:
+
                 "{prompt}"
 
                 Use exactly this format:
@@ -125,29 +156,32 @@ def generate_with_llm(prompt: str) -> dict:
         model="llama-3.3-70b-versatile",
     )
 
-    raw = chat_completion.choices[0].message.content
+    raw=chat_completion.choices[0].message.content
 
     try:
-        # Clean response in case LLM adds extra text
         raw = raw.strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
         raw = raw.strip()
-
         result = json.loads(raw)
         result["source"] = "llm"
         return result
-
     except json.JSONDecodeError as e:
         raise ValueError(f"LLM returned invalid JSON: {e}")
 
 
 def generate_circuit(user_prompt: str) -> dict:
+    """
+    Main function - LLM first, rule-based fallback if LLM fails
+    Input:  User text like 'make LED circuit'
+    Output: Circuit JSON dict
+    """
 
+    #1 Validate input
     try:
-        clean_prompt = validate_input(user_prompt)
+        clean_prompt=validate_input(user_prompt)
     except ValueError as e:
         return {
             "error": str(e),
@@ -156,11 +190,13 @@ def generate_circuit(user_prompt: str) -> dict:
             "connections": []
         }
 
+    #2 Try LLM first
     try:
         print("Asking Groq AI...")
-        result = generate_with_llm(clean_prompt)
+        result=generate_with_llm(clean_prompt)
         return result
 
+    #3 Clean fallback, no crash
     except Exception as e:
         print(f"LLM failed ({e}), using rule-based fallback...")
         return generate_with_rules(clean_prompt)
