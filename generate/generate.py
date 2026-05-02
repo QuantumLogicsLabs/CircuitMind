@@ -41,8 +41,8 @@ def generate_with_rules(prompt: str) -> dict:
     elif "motor" in prompt:
         return {
             "circuit_name": "Motor Circuit",
-            "components": ["battery", "switch", "motor"],
-            "connections": ["battery -> switch -> motor"],
+            "components": ["battery", "switch", "dc_motor"],
+            "connections": ["battery -> switch -> dc_motor"],
             "confidence": "high",
             "description": "Basic DC motor circuit with on/off switch",
             "source": "rule-based"
@@ -59,8 +59,8 @@ def generate_with_rules(prompt: str) -> dict:
     elif "fan" in prompt:
         return {
             "circuit_name": "Fan Circuit",
-            "components": ["battery", "switch", "capacitor", "fan"],
-            "connections": ["battery -> switch -> capacitor -> fan"],
+            "components": ["battery", "switch", "capacitor", "dc_fan"],
+            "connections": ["battery -> switch -> capacitor -> dc_fan"],
             "confidence": "high",
             "description": "Fan circuit with capacitor for smooth startup",
             "source": "rule-based"
@@ -77,8 +77,8 @@ def generate_with_rules(prompt: str) -> dict:
     elif "solar" in prompt:
         return {
             "circuit_name": "Solar Charging Circuit",
-            "components": ["solar panel", "diode", "charge controller", "battery"],
-            "connections": ["solar panel -> diode -> charge controller -> battery"],
+            "components": ["solar_panel", "diode", "charge_controller", "battery"],
+            "connections": ["solar_panel -> diode -> charge_controller -> battery"],
             "confidence": "high",
             "description": "Solar panel battery charging circuit",
             "source": "rule-based"
@@ -86,8 +86,8 @@ def generate_with_rules(prompt: str) -> dict:
     elif "555" in prompt or "timer" in prompt:
         return {
             "circuit_name": "555 Timer Circuit",
-            "components": ["battery", "555-timer", "resistor", "capacitor", "led"],
-            "connections": ["battery -> 555-timer -> resistor -> capacitor -> led"],
+            "components": ["battery", "555_timer", "resistor", "capacitor", "led"],
+            "connections": ["battery -> 555_timer -> resistor -> capacitor -> led"],
             "confidence": "high",
             "description": "555 timer astable multivibrator circuit",
             "source": "rule-based"
@@ -122,13 +122,13 @@ def generate_with_llm(prompt: str) -> dict:
     if not GROQ_AVAILABLE:
         raise ValueError("Groq not installed. Run: pip install groq")
 
-    api_key=os.environ.get("GROQ_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         raise ValueError("GROQ_API_KEY not set")
 
-    client=Groq(api_key=api_key)
+    client = Groq(api_key=api_key)
 
-    chat_completion=client.chat.completions.create(
+    chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "system",
@@ -156,7 +156,7 @@ def generate_with_llm(prompt: str) -> dict:
         model="llama-3.3-70b-versatile",
     )
 
-    raw=chat_completion.choices[0].message.content
+    raw = chat_completion.choices[0].message.content
 
     try:
         raw = raw.strip()
@@ -181,7 +181,7 @@ def generate_circuit(user_prompt: str) -> dict:
 
     #1 Validate input
     try:
-        clean_prompt=validate_input(user_prompt)
+        clean_prompt = validate_input(user_prompt)
     except ValueError as e:
         return {
             "error": str(e),
@@ -193,7 +193,7 @@ def generate_circuit(user_prompt: str) -> dict:
     #2 Try LLM first
     try:
         print("Asking Groq AI...")
-        result=generate_with_llm(clean_prompt)
+        result = generate_with_llm(clean_prompt)
         return result
 
     #3 Clean fallback, no crash
