@@ -1,0 +1,215 @@
+[
+  {
+    "test_id": "TC01",
+    "description": "Valid LED circuit \u2014 should pass with no issues",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Valid LED Circuit",
+      "components": [
+        "battery",
+        "resistor",
+        "led"
+      ],
+      "connections": [
+        "battery -> resistor -> led"
+      ]
+    },
+    "actual_issues": [],
+    "passed": true
+  },
+  {
+    "test_id": "TC02",
+    "description": "LED without resistor \u2014 should warn",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "LED Without Resistor",
+      "components": [
+        "battery",
+        "led"
+      ],
+      "connections": [
+        "battery -> led"
+      ]
+    },
+    "actual_issues": [
+      "Warning: 'led' detected without a current-limiting component. Add a resistor to prevent burnout."
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC03",
+    "description": "No power source \u2014 should error",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "No Power Source",
+      "components": [
+        "resistor",
+        "led"
+      ],
+      "connections": [
+        "resistor -> led"
+      ]
+    },
+    "actual_issues": [
+      "Error: No power source found. Add a battery or power supply."
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC04",
+    "description": "Short circuit 2 nodes \u2014 should error",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Short Circuit 2 Nodes",
+      "components": [
+        "battery",
+        "ground"
+      ],
+      "connections": [
+        "battery -> ground"
+      ]
+    },
+    "actual_issues": [
+      "Error: Short circuit detected \u2014 power reaches ground with no load. Path: [battery -> ground]"
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC05",
+    "description": "Short circuit 3 nodes \u2014 should error",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Short Circuit 3 Nodes",
+      "components": [
+        "battery",
+        "wire",
+        "ground"
+      ],
+      "connections": [
+        "battery -> wire -> ground"
+      ]
+    },
+    "actual_issues": [
+      "Error: Short circuit detected \u2014 power reaches ground with no load. Path: [battery -> wire -> ground]"
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC06",
+    "description": "Short circuit 4 nodes \u2014 should error",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Short Circuit 4 Nodes",
+      "components": [
+        "battery",
+        "node1",
+        "node2",
+        "gnd"
+      ],
+      "connections": [
+        "battery -> node1 -> node2 -> gnd"
+      ]
+    },
+    "actual_issues": [
+      "Error: Short circuit detected \u2014 power reaches ground with no load. Path: [battery -> node1 -> node2 -> gnd]"
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC07",
+    "description": "No connections \u2014 should error",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Empty Connections",
+      "components": [
+        "battery",
+        "resistor",
+        "led"
+      ],
+      "connections": []
+    },
+    "actual_issues": [
+      "Error: No connections defined. Components are not linked together.",
+      "Warning: 'resistor' is not found in any connection. It may be floating (disconnected).",
+      "Warning: 'led' is not found in any connection. It may be floating (disconnected)."
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC08",
+    "description": "Floating component \u2014 should warn",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Floating Motor",
+      "components": [
+        "battery",
+        "resistor",
+        "led",
+        "motor"
+      ],
+      "connections": [
+        "battery -> resistor -> led"
+      ]
+    },
+    "actual_issues": [
+      "Warning: 'motor' is not found in any connection. It may be floating (disconnected)."
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC09",
+    "description": "Capacitor without polarity \u2014 should info",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "Capacitor No Polarity",
+      "components": [
+        "battery",
+        "resistor",
+        "capacitor"
+      ],
+      "connections": [
+        "battery -> resistor -> capacitor"
+      ]
+    },
+    "actual_issues": [
+      "Info: Capacitor detected but no polarity indication found in connections. Ensure correct polarity if using an electrolytic capacitor."
+    ],
+    "passed": false
+  },
+  {
+    "test_id": "TC10",
+    "description": "LED with npn_transistor \u2014 should pass",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "LED with NPN Transistor",
+      "components": [
+        "battery",
+        "npn_transistor",
+        "led"
+      ],
+      "connections": [
+        "battery -> npn_transistor -> led"
+      ]
+    },
+    "actual_issues": [],
+    "passed": true
+  },
+  {
+    "test_id": "TC11",
+    "description": "LED with pnp_transistor \u2014 should pass",
+    "status": "PASS",
+    "input": {
+      "circuit_name": "LED with PNP Transistor",
+      "components": [
+        "battery",
+        "pnp_transistor",
+        "led"
+      ],
+      "connections": [
+        "battery -> pnp_transistor -> led"
+      ]
+    },
+    "actual_issues": [],
+    "passed": true
+  }
+]

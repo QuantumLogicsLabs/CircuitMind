@@ -1,5 +1,12 @@
 .env
-generate/output.json
-generate/__pycache__/
 __pycache__/
+*/__pycache__/
+**/__pycache__/
 *.pyc
+circuit_diagram.svg
+circuit_output.json
+circuit_output.sp
+circuit_output.txt
+generate/output.json
+test_circuitmind.py
+circuitmind/
