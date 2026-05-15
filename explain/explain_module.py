@@ -1,159 +1,145 @@
 from typing import Any
 
 
-COMPONENT_INFO = {
-    "battery":          {"role": "power source",       "description": "provides electrical energy to the circuit"},
-    "power_supply":     {"role": "power source",       "description": "supplies regulated DC voltage to the circuit"},
-    "solar_cell":       {"role": "power source",       "description": "converts sunlight into electrical energy"},
-    "resistor":         {"role": "current limiter",    "description": "limits and controls the flow of current"},
-    "capacitor":        {"role": "energy storage",     "description": "stores and releases electrical charge"},
-    "inductor":         {"role": "energy storage",     "description": "stores energy in a magnetic field"},
-    "potentiometer":    {"role": "variable resistor",  "description": "adjusts resistance to control current or voltage"},
-    "diode":            {"role": "one-way valve",      "description": "allows current to flow in only one direction"},
-    "led":              {"role": "light emitter",      "description": "emits light when current flows through it"},
-    "zener_diode":      {"role": "voltage regulator",  "description": "maintains a stable reference voltage"},
-    "transistor":       {"role": "switch/amplifier",   "description": "amplifies signals or acts as an electronic switch"},
-    "mosfet":           {"role": "switch",             "description": "controls large currents using a small gate voltage"},
-    "op_amp":           {"role": "amplifier",            "description": "amplifies the difference between two input signals"},
-    "op-amp":           {"role": "amplifier",            "description": "amplifies the difference between two input signals"},
-    "555_timer":        {"role": "timer IC",             "description": "generates timing signals and pulses"},
-    "arduino":          {"role": "microcontroller",      "description": "runs code to control other components"},
-    "microcontroller":  {"role": "microcontroller",      "description": "executes programmed logic to control the circuit"},
-    "npn_transistor":   {"role": "NPN switch/amplifier", "description": "allows current from collector to emitter when base is triggered with a positive signal"},
-    "pnp_transistor":   {"role": "PNP switch/amplifier", "description": "allows current from emitter to collector when base is pulled low"},
-    "buzzer":           {"role": "sound output",       "description": "produces an audible beep or tone"},
-    "motor":            {"role": "mechanical output",  "description": "converts electrical energy into rotational motion"},
-    "speaker":          {"role": "audio output",       "description": "converts electrical signals into sound waves"},
-    "relay":            {"role": "switch",             "description": "uses a small current to control a larger circuit"},
-    "display":          {"role": "visual output",      "description": "shows text or graphics driven by control signals"},
-    "lcd":              {"role": "visual output",      "description": "displays alphanumeric characters or graphics"},
-    "switch":           {"role": "manual control",     "description": "opens or closes the circuit when toggled"},
-    "button":           {"role": "manual control",     "description": "momentarily closes the circuit when pressed"},
-    "sensor":           {"role": "input",              "description": "detects a physical quantity and produces a signal"},
-    "thermistor":       {"role": "temperature sensor", "description": "changes resistance based on temperature"},
-    "ldr":              {"role": "light sensor",       "description": "changes resistance based on light intensity"},
-    "photodiode":       {"role": "light sensor",       "description": "generates current when exposed to light"},
-    "ground":           {"role": "reference point",    "description": "serves as the 0V reference for the circuit"},
-    "fuse":             {"role": "protection",         "description": "breaks the circuit if current exceeds a safe limit"},
-    "transformer":      {"role": "voltage converter",  "description": "steps voltage up or down using magnetic induction"},
+GATE_INFO = {
+    "AND":    {"role": "logic gate",   "description": "outputs true only when all inputs are true"},
+    "OR":     {"role": "logic gate",   "description": "outputs true when at least one input is true"},
+    "NOT":    {"role": "logic gate",   "description": "inverts the input signal"},
+    "NAND":   {"role": "logic gate",   "description": "outputs false only when all inputs are true"},
+    "NOR":    {"role": "logic gate",   "description": "outputs false when at least one input is true"},
+    "XOR":    {"role": "logic gate",   "description": "outputs true when inputs are different"},
+    "XNOR":   {"role": "logic gate",   "description": "outputs true when both inputs are the same"},
+    "BUFFER": {"role": "logic gate",   "description": "passes the input signal through unchanged"},
+    "INPUT":  {"role": "input",        "description": "provides an input signal to the circuit"},
+    "OUTPUT": {"role": "output",       "description": "receives and displays the final output signal"},
+    "MUX":    {"role": "multiplexer",  "description": "selects one of several input signals based on a selector"},
+    "DEMUX":  {"role": "demultiplexer","description": "routes a single input to one of several outputs"},
+    "DFLIP":  {"role": "flip-flop",    "description": "stores a single bit of data on a clock edge"},
+    "TFLIP":  {"role": "flip-flop",    "description": "toggles its output on each clock pulse"},
+    "CLOCK":  {"role": "clock",        "description": "generates a periodic signal to drive sequential logic"},
 }
 
-NEEDS_CURRENT_LIMIT = {"led", "diode", "zener_diode"}
-CURRENT_LIMITERS    = {"resistor", "potentiometer", "mosfet", "transistor", "npn_transistor", "pnp_transistor"}
-POWER_SOURCES       = {"battery", "power_supply", "solar_cell"}
+NEEDS_INPUT_LIMIT = {"OUTPUT"}
+POWER_GATES       = {"INPUT", "CLOCK"}
 
 
 def _normalize(name: str) -> str:
-    return name.strip().lower().replace(" ", "_")
+    return name.strip().upper()
 
 
 def _article(word: str) -> str:
     return "an" if word and word[0].lower() in "aeiou" else "a"
 
 
-def _parse_connections(connections: list[str]) -> list[list[str]]:
-    parsed = []
-    for conn in connections:
-        if "->" in conn:
-            nodes = [n.strip().lower() for n in conn.split("->")]
-        elif "--" in conn:
-            nodes = [n.strip().lower() for n in conn.split("--")]
-        else:
-            nodes = [conn.strip().lower()]
-        parsed.append(nodes)
-    return parsed
-
-
-def _build_flow_description(components: list[str], connections: list[str]) -> str:
+def _build_flow_description(gates: list[dict], wires: list[dict]) -> str:
+    id_to_gate = {g["id"]: g for g in gates}
     flow_sentences = []
 
-    for path in _parse_connections(connections):
-        if len(path) < 2:
+    for wire in wires:
+        from_gate = id_to_gate.get(wire["fromId"])
+        to_gate   = id_to_gate.get(wire["toId"])
+        if not from_gate or not to_gate:
             continue
 
-        readable = [p.replace("_", " ") for p in path]
-        sentence = "Current flows from the " + " → ".join(readable) + "."
+        from_label = from_gate.get("label") or from_gate["type"]
+        to_label   = to_gate.get("label")   or to_gate["type"]
 
-        terminal = path[-1]
-        if terminal == "led":
-            sentence += " This causes the LED to emit light."
-        elif terminal == "motor":
-            sentence += " This causes the motor to spin."
-        elif terminal == "buzzer":
-            sentence += " This causes the buzzer to sound."
-        elif terminal == "speaker":
-            sentence += " This drives the speaker to produce audio."
+        sentence = f"Signal flows from {from_label} into {to_label}."
+
+        if to_gate["type"] == "OUTPUT":
+            sentence += f" The result appears at output {to_label}."
+        elif to_gate["type"] in {"AND", "NAND"}:
+            sentence += f" This feeds into an AND condition."
+        elif to_gate["type"] in {"OR", "NOR"}:
+            sentence += f" This feeds into an OR condition."
+        elif to_gate["type"] == "NOT":
+            sentence += f" The signal will be inverted."
+        elif to_gate["type"] in {"XOR", "XNOR"}:
+            sentence += f" This feeds into an equality check."
 
         flow_sentences.append(sentence)
-
-    if not flow_sentences:
-        has_power  = any(c in POWER_SOURCES for c in components)
-        has_output = any(c in {"led", "motor", "buzzer", "speaker", "display"} for c in components)
-        if has_power and has_output:
-            return "Power from the source flows through the circuit to drive the output component."
 
     return " ".join(flow_sentences)
 
 
-def _check_warnings(components: list[str], unknown: list[str]) -> list[str]:
+def _check_warnings(gates: list[dict], wires: list[dict], unknown: list[str]) -> list[str]:
     warnings = []
+    gate_types = [g["type"] for g in gates]
 
-    if not any(c in POWER_SOURCES for c in components):
-        warnings.append("No power source detected. The circuit cannot operate without one.")
+    if not any(t in POWER_GATES for t in gate_types):
+        warnings.append("No INPUT or CLOCK gate detected. The circuit has no signal source.")
 
-    has_limiter = any(c in CURRENT_LIMITERS for c in components)
-    for comp in NEEDS_CURRENT_LIMIT:
-        if comp in components and not has_limiter:
-            warnings.append(f"'{comp}' detected without a current-limiting component. Add a resistor to prevent burnout.")
+    if "OUTPUT" not in gate_types:
+        warnings.append("No OUTPUT gate detected. The circuit has no observable result.")
+
+    connected_ids = {w["toId"] for w in wires} | {w["fromId"] for w in wires}
+    for gate in gates:
+        if gate["id"] not in connected_ids:
+            label = gate.get("label") or gate["type"]
+            warnings.append(f"Gate '{label}' (id {gate['id']}) is not connected to anything.")
 
     for u in unknown:
-        warnings.append(f"'{u}' is not in the knowledge base. Description may be incomplete.")
+        warnings.append(f"Gate type '{u}' is not in the knowledge base. Description may be incomplete.")
 
     return warnings
 
 
 def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(circuit_json, dict):
-        return {"explanation": "", "component_details": [], "flow_description": "", "warnings": ["Input must be a JSON object."]}
+        return {**circuit_json, "explanation": "", "component_details": [], "flow_description": "", "warnings": ["Input must be a JSON object."]}
 
-    raw_components  = circuit_json.get("components", [])
-    raw_connections = circuit_json.get("connections", [])
+    gates = circuit_json.get("gates", [])
+    wires = circuit_json.get("wires", [])
 
-    if not raw_components:
-        return {"explanation": "", "component_details": [], "flow_description": "", "warnings": ["No components found in circuit JSON."]}
+    if not gates:
+        return {**circuit_json, "explanation": "", "component_details": [], "flow_description": "", "warnings": ["No gates found in circuit JSON."]}
 
-    components = [_normalize(c) for c in raw_components]
+    component_details = []
+    unknown_gates     = []
 
-    component_details  = []
-    unknown_components = []
+    for gate in gates:
+        gate_type = _normalize(gate.get("type", ""))
+        label     = gate.get("label") or gate_type
 
-    for comp in components:
-        if comp in COMPONENT_INFO:
-            info = COMPONENT_INFO[comp]
-            component_details.append({"name": comp, "role": info["role"], "description": info["description"]})
+        if gate_type in GATE_INFO:
+            info = GATE_INFO[gate_type]
+            component_details.append({"id": gate["id"], "label": label, "type": gate_type, "role": info["role"], "description": info["description"]})
         else:
-            unknown_components.append(comp)
-            component_details.append({"name": comp, "role": "unknown", "description": f"a {comp} component (no description available)"})
+            unknown_gates.append(gate_type)
+            component_details.append({"id": gate["id"], "label": label, "type": gate_type, "role": "unknown", "description": f"a {gate_type} gate (no description available)"})
+
+    inputs  = [g for g in gates if g["type"] == "INPUT"]
+    outputs = [g for g in gates if g["type"] == "OUTPUT"]
+    logic   = [g for g in gates if g["type"] not in {"INPUT", "OUTPUT"}]
+
+    input_labels  = [g.get("label") or "INPUT" for g in inputs]
+    output_labels = [g.get("label") or "OUTPUT" for g in outputs]
+    logic_types   = list({g["type"] for g in logic})
 
     parts = []
-    for detail in component_details:
-        comp_name = detail["name"].replace("_", " ")
-        parts.append(f"{_article(comp_name)} {comp_name} ({detail['role']}) that {detail['description']}")
+    if input_labels:
+        parts.append(f"inputs {', '.join(input_labels)}")
+    if logic_types:
+        gate_parts = [f"{_article(t.lower())} {t} gate" for t in logic_types]
+        parts.append(", ".join(gate_parts))
+    if output_labels:
+        parts.append(f"output {', '.join(output_labels)}")
 
-    if len(parts) > 1:
-        explanation = "This circuit uses " + ", ".join(parts[:-1]) + ", and " + parts[-1] + "."
+    if parts:
+        explanation = "This circuit uses " + ", ".join(parts) + "."
     else:
-        explanation = "This circuit uses " + parts[0] + "."
+        explanation = "This circuit has no identifiable components."
 
-    flow_description = _build_flow_description(components, raw_connections)
+    flow_description = _build_flow_description(gates, wires)
     if flow_description:
         explanation += " " + flow_description
 
     return {
+        **circuit_json,
         "explanation":       explanation,
         "component_details": component_details,
         "flow_description":  flow_description,
-        "warnings":          _check_warnings(components, unknown_components),
+        "warnings":          _check_warnings(gates, wires, unknown_gates),
     }
 
 
@@ -169,11 +155,107 @@ def pretty_print(result: dict[str, Any]) -> None:
         print(f"\n⚡ FLOW:\n  {result['flow_description']}")
 
     if result.get("component_details"):
-        print("\n🔩 COMPONENTS:")
+        print("\n🔩 GATES:")
         for c in result["component_details"]:
-            print(f"  • {c['name']:20s} | {c['role']:20s} | {c['description']}")
+            print(f"  • [{c['id']}] {c['label']:15s} | {c['role']:20s} | {c['description']}")
 
     if result.get("warnings"):
         print("\n⚠️  WARNINGS:")
         for w in result["warnings"]:
             print(f"  ! {w}")
+
+
+def _run_tests() -> None:
+    TEST_CASES = [
+        {"label": "Basic XNOR Circuit",
+         "input": {
+             "gates": [
+                 {"id": 0, "type": "XNOR", "x": 460, "y": 180, "inputs": 2, "hasOutput": True, "output": None, "inputValues": [], "label": None},
+                 {"id": 1, "type": "OUTPUT", "x": 760, "y": 140, "inputs": 1, "hasOutput": False, "output": None, "inputValues": [], "label": "Z"},
+                 {"id": 2, "type": "INPUT", "x": 80, "y": 100, "inputs": 0, "hasOutput": True, "output": None, "inputValues": [False], "label": "A"},
+                 {"id": 3, "type": "INPUT", "x": 80, "y": 320, "inputs": 0, "hasOutput": True, "output": None, "inputValues": [False], "label": "B"}
+             ],
+             "wires": [
+                 {"id": 0, "fromId": 0, "toId": 1, "toIndex": 0},
+                 {"id": 1, "fromId": 2, "toId": 0, "toIndex": 0},
+                 {"id": 2, "fromId": 3, "toId": 0, "toIndex": 1}
+             ],
+             "gateIdCounter": 4, "wireIdCounter": 3, "inputCounter": 2, "outputCounter": 1
+         }},
+
+        {"label": "AND Gate Circuit",
+         "input": {
+             "gates": [
+                 {"id": 0, "type": "INPUT",  "x": 80,  "y": 100, "inputs": 0, "hasOutput": True,  "output": None, "inputValues": [False], "label": "A"},
+                 {"id": 1, "type": "INPUT",  "x": 80,  "y": 220, "inputs": 0, "hasOutput": True,  "output": None, "inputValues": [False], "label": "B"},
+                 {"id": 2, "type": "AND",    "x": 300, "y": 160, "inputs": 2, "hasOutput": True,  "output": None, "inputValues": [], "label": None},
+                 {"id": 3, "type": "OUTPUT", "x": 560, "y": 160, "inputs": 1, "hasOutput": False, "output": None, "inputValues": [], "label": "Z"}
+             ],
+             "wires": [
+                 {"id": 0, "fromId": 0, "toId": 2, "toIndex": 0},
+                 {"id": 1, "fromId": 1, "toId": 2, "toIndex": 1},
+                 {"id": 2, "fromId": 2, "toId": 3, "toIndex": 0}
+             ],
+             "gateIdCounter": 4, "wireIdCounter": 3, "inputCounter": 2, "outputCounter": 1
+         }},
+
+        {"label": "Half Adder (XOR + AND)",
+         "input": {
+             "gates": [
+                 {"id": 0, "type": "INPUT",  "x": 80,  "y": 100, "inputs": 0, "hasOutput": True,  "output": None, "inputValues": [False], "label": "A"},
+                 {"id": 1, "type": "INPUT",  "x": 80,  "y": 260, "inputs": 0, "hasOutput": True,  "output": None, "inputValues": [False], "label": "B"},
+                 {"id": 2, "type": "XOR",    "x": 320, "y": 140, "inputs": 2, "hasOutput": True,  "output": None, "inputValues": [], "label": None},
+                 {"id": 3, "type": "AND",    "x": 320, "y": 280, "inputs": 2, "hasOutput": True,  "output": None, "inputValues": [], "label": None},
+                 {"id": 4, "type": "OUTPUT", "x": 560, "y": 140, "inputs": 1, "hasOutput": False, "output": None, "inputValues": [], "label": "SUM"},
+                 {"id": 5, "type": "OUTPUT", "x": 560, "y": 280, "inputs": 1, "hasOutput": False, "output": None, "inputValues": [], "label": "CARRY"}
+             ],
+             "wires": [
+                 {"id": 0, "fromId": 0, "toId": 2, "toIndex": 0},
+                 {"id": 1, "fromId": 1, "toId": 2, "toIndex": 1},
+                 {"id": 2, "fromId": 0, "toId": 3, "toIndex": 0},
+                 {"id": 3, "fromId": 1, "toId": 3, "toIndex": 1},
+                 {"id": 4, "fromId": 2, "toId": 4, "toIndex": 0},
+                 {"id": 5, "fromId": 3, "toId": 5, "toIndex": 0}
+             ],
+             "gateIdCounter": 6, "wireIdCounter": 6, "inputCounter": 2, "outputCounter": 2
+         }},
+
+        {"label": "No Input Gate (warning expected)",
+         "input": {
+             "gates": [
+                 {"id": 0, "type": "AND",    "x": 300, "y": 160, "inputs": 2, "hasOutput": True,  "output": None, "inputValues": [], "label": None},
+                 {"id": 1, "type": "OUTPUT", "x": 560, "y": 160, "inputs": 1, "hasOutput": False, "output": None, "inputValues": [], "label": "Z"}
+             ],
+             "wires": [
+                 {"id": 0, "fromId": 0, "toId": 1, "toIndex": 0}
+             ],
+             "gateIdCounter": 2, "wireIdCounter": 1, "inputCounter": 0, "outputCounter": 1
+         }},
+
+        {"label": "Disconnected Gate (warning expected)",
+         "input": {
+             "gates": [
+                 {"id": 0, "type": "INPUT",  "x": 80,  "y": 100, "inputs": 0, "hasOutput": True,  "output": None, "inputValues": [False], "label": "A"},
+                 {"id": 1, "type": "NOT",    "x": 300, "y": 100, "inputs": 1, "hasOutput": True,  "output": None, "inputValues": [], "label": None},
+                 {"id": 2, "type": "OUTPUT", "x": 560, "y": 100, "inputs": 1, "hasOutput": False, "output": None, "inputValues": [], "label": "Z"},
+                 {"id": 3, "type": "AND",    "x": 300, "y": 280, "inputs": 2, "hasOutput": True,  "output": None, "inputValues": [], "label": None}
+             ],
+             "wires": [
+                 {"id": 0, "fromId": 0, "toId": 1, "toIndex": 0},
+                 {"id": 1, "fromId": 1, "toId": 2, "toIndex": 0}
+             ],
+             "gateIdCounter": 4, "wireIdCounter": 2, "inputCounter": 1, "outputCounter": 1
+         }},
+    ]
+
+    print("\n" + "━" * 60)
+    print("  CircuitMind — Explain Module — Test Suite")
+    print("━" * 60)
+
+    for i, test in enumerate(TEST_CASES, 1):
+        print(f"\n[Test {i}] {test['label']}")
+        pretty_print(explain_circuit(test["input"]))
+
+
+if __name__ == "__main__":
+    _run_tests()
