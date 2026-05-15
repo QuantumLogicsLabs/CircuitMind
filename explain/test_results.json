@@ -1,188 +1,933 @@
 [
   {
-    "label": "Basic LED Circuit",
+    "label": "Basic XNOR Circuit",
     "input": {
-      "components": [
-        "battery",
-        "resistor",
-        "led"
-      ],
-      "connections": [
-        "battery -> resistor -> led"
-      ]
-    },
-    "output": {
-      "explanation": "This circuit uses a battery (power source) that provides electrical energy to the circuit, a resistor (current limiter) that limits and controls the flow of current, and a led (light emitter) that emits light when current flows through it. Current flows from the battery \u2192 resistor \u2192 led. This causes the LED to emit light.",
-      "component_details": [
+      "gates": [
         {
-          "name": "battery",
-          "role": "power source",
-          "description": "provides electrical energy to the circuit"
+          "id": 0,
+          "type": "XNOR",
+          "x": 460,
+          "y": 180,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
         },
         {
-          "name": "resistor",
-          "role": "current limiter",
-          "description": "limits and controls the flow of current"
+          "id": 1,
+          "type": "OUTPUT",
+          "x": 760,
+          "y": 140,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
         },
         {
-          "name": "led",
-          "role": "light emitter",
-          "description": "emits light when current flows through it"
+          "id": 2,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
+        },
+        {
+          "id": 3,
+          "type": "INPUT",
+          "x": 80,
+          "y": 320,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "B"
         }
       ],
-      "flow_description": "Current flows from the battery \u2192 resistor \u2192 led. This causes the LED to emit light.",
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 1,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 2,
+          "toId": 0,
+          "toIndex": 0
+        },
+        {
+          "id": 2,
+          "fromId": 3,
+          "toId": 0,
+          "toIndex": 1
+        }
+      ],
+      "gateIdCounter": 4,
+      "wireIdCounter": 3,
+      "inputCounter": 2,
+      "outputCounter": 1
+    },
+    "output": {
+      "gates": [
+        {
+          "id": 0,
+          "type": "XNOR",
+          "x": 460,
+          "y": 180,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 1,
+          "type": "OUTPUT",
+          "x": 760,
+          "y": 140,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
+        },
+        {
+          "id": 2,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
+        },
+        {
+          "id": 3,
+          "type": "INPUT",
+          "x": 80,
+          "y": 320,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "B"
+        }
+      ],
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 1,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 2,
+          "toId": 0,
+          "toIndex": 0
+        },
+        {
+          "id": 2,
+          "fromId": 3,
+          "toId": 0,
+          "toIndex": 1
+        }
+      ],
+      "gateIdCounter": 4,
+      "wireIdCounter": 3,
+      "inputCounter": 2,
+      "outputCounter": 1,
+      "explanation": "This circuit uses inputs A, B, a XNOR gate, output Z. Signal flows from XNOR into Z. The result appears at output Z. Signal flows from A into XNOR. This feeds into an equality check. Signal flows from B into XNOR. This feeds into an equality check.",
+      "component_details": [
+        {
+          "id": 0,
+          "label": "XNOR",
+          "type": "XNOR",
+          "role": "logic gate",
+          "description": "outputs true when both inputs are the same"
+        },
+        {
+          "id": 1,
+          "label": "Z",
+          "type": "OUTPUT",
+          "role": "output",
+          "description": "receives and displays the final output signal"
+        },
+        {
+          "id": 2,
+          "label": "A",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        },
+        {
+          "id": 3,
+          "label": "B",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        }
+      ],
+      "flow_description": "Signal flows from XNOR into Z. The result appears at output Z. Signal flows from A into XNOR. This feeds into an equality check. Signal flows from B into XNOR. This feeds into an equality check.",
       "warnings": []
     }
   },
   {
-    "label": "Motor Control Circuit",
+    "label": "AND Gate Circuit",
     "input": {
-      "components": [
-        "battery",
-        "resistor",
-        "transistor",
-        "motor"
-      ],
-      "connections": [
-        "battery -> resistor -> transistor -> motor"
-      ]
-    },
-    "output": {
-      "explanation": "This circuit uses a battery (power source) that provides electrical energy to the circuit, a resistor (current limiter) that limits and controls the flow of current, a transistor (switch/amplifier) that amplifies signals or acts as an electronic switch, and a motor (mechanical output) that converts electrical energy into rotational motion. Current flows from the battery \u2192 resistor \u2192 transistor \u2192 motor. This causes the motor to spin.",
-      "component_details": [
+      "gates": [
         {
-          "name": "battery",
-          "role": "power source",
-          "description": "provides electrical energy to the circuit"
+          "id": 0,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
         },
         {
-          "name": "resistor",
-          "role": "current limiter",
-          "description": "limits and controls the flow of current"
+          "id": 1,
+          "type": "INPUT",
+          "x": 80,
+          "y": 220,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "B"
         },
         {
-          "name": "transistor",
-          "role": "switch/amplifier",
-          "description": "amplifies signals or acts as an electronic switch"
+          "id": 2,
+          "type": "AND",
+          "x": 300,
+          "y": 160,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
         },
         {
-          "name": "motor",
-          "role": "mechanical output",
-          "description": "converts electrical energy into rotational motion"
+          "id": 3,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 160,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
         }
       ],
-      "flow_description": "Current flows from the battery \u2192 resistor \u2192 transistor \u2192 motor. This causes the motor to spin.",
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 2,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 1,
+          "toId": 2,
+          "toIndex": 1
+        },
+        {
+          "id": 2,
+          "fromId": 2,
+          "toId": 3,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 4,
+      "wireIdCounter": 3,
+      "inputCounter": 2,
+      "outputCounter": 1
+    },
+    "output": {
+      "gates": [
+        {
+          "id": 0,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
+        },
+        {
+          "id": 1,
+          "type": "INPUT",
+          "x": 80,
+          "y": 220,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "B"
+        },
+        {
+          "id": 2,
+          "type": "AND",
+          "x": 300,
+          "y": 160,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 3,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 160,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
+        }
+      ],
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 2,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 1,
+          "toId": 2,
+          "toIndex": 1
+        },
+        {
+          "id": 2,
+          "fromId": 2,
+          "toId": 3,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 4,
+      "wireIdCounter": 3,
+      "inputCounter": 2,
+      "outputCounter": 1,
+      "explanation": "This circuit uses inputs A, B, an AND gate, output Z. Signal flows from A into AND. This feeds into an AND condition. Signal flows from B into AND. This feeds into an AND condition. Signal flows from AND into Z. The result appears at output Z.",
+      "component_details": [
+        {
+          "id": 0,
+          "label": "A",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        },
+        {
+          "id": 1,
+          "label": "B",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        },
+        {
+          "id": 2,
+          "label": "AND",
+          "type": "AND",
+          "role": "logic gate",
+          "description": "outputs true only when all inputs are true"
+        },
+        {
+          "id": 3,
+          "label": "Z",
+          "type": "OUTPUT",
+          "role": "output",
+          "description": "receives and displays the final output signal"
+        }
+      ],
+      "flow_description": "Signal flows from A into AND. This feeds into an AND condition. Signal flows from B into AND. This feeds into an AND condition. Signal flows from AND into Z. The result appears at output Z.",
       "warnings": []
     }
   },
   {
-    "label": "Arduino Sensor Circuit",
+    "label": "Half Adder (XOR + AND)",
     "input": {
-      "components": [
-        "power_supply",
-        "arduino",
-        "ldr",
-        "resistor",
-        "led"
-      ],
-      "connections": [
-        "power_supply -> arduino",
-        "ldr -> resistor -> arduino",
-        "arduino -> led"
-      ]
-    },
-    "output": {
-      "explanation": "This circuit uses a power supply (power source) that supplies regulated DC voltage to the circuit, an arduino (microcontroller) that runs code to control other components, a ldr (light sensor) that changes resistance based on light intensity, a resistor (current limiter) that limits and controls the flow of current, and a led (light emitter) that emits light when current flows through it. Current flows from the power supply \u2192 arduino. Current flows from the ldr \u2192 resistor \u2192 arduino. Current flows from the arduino \u2192 led. This causes the LED to emit light.",
-      "component_details": [
+      "gates": [
         {
-          "name": "power_supply",
-          "role": "power source",
-          "description": "supplies regulated DC voltage to the circuit"
+          "id": 0,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
         },
         {
-          "name": "arduino",
-          "role": "microcontroller",
-          "description": "runs code to control other components"
+          "id": 1,
+          "type": "INPUT",
+          "x": 80,
+          "y": 260,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "B"
         },
         {
-          "name": "ldr",
-          "role": "light sensor",
-          "description": "changes resistance based on light intensity"
+          "id": 2,
+          "type": "XOR",
+          "x": 320,
+          "y": 140,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
         },
         {
-          "name": "resistor",
-          "role": "current limiter",
-          "description": "limits and controls the flow of current"
+          "id": 3,
+          "type": "AND",
+          "x": 320,
+          "y": 280,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
         },
         {
-          "name": "led",
-          "role": "light emitter",
-          "description": "emits light when current flows through it"
+          "id": 4,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 140,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "SUM"
+        },
+        {
+          "id": 5,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 280,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "CARRY"
         }
       ],
-      "flow_description": "Current flows from the power supply \u2192 arduino. Current flows from the ldr \u2192 resistor \u2192 arduino. Current flows from the arduino \u2192 led. This causes the LED to emit light.",
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 2,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 1,
+          "toId": 2,
+          "toIndex": 1
+        },
+        {
+          "id": 2,
+          "fromId": 0,
+          "toId": 3,
+          "toIndex": 0
+        },
+        {
+          "id": 3,
+          "fromId": 1,
+          "toId": 3,
+          "toIndex": 1
+        },
+        {
+          "id": 4,
+          "fromId": 2,
+          "toId": 4,
+          "toIndex": 0
+        },
+        {
+          "id": 5,
+          "fromId": 3,
+          "toId": 5,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 6,
+      "wireIdCounter": 6,
+      "inputCounter": 2,
+      "outputCounter": 2
+    },
+    "output": {
+      "gates": [
+        {
+          "id": 0,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
+        },
+        {
+          "id": 1,
+          "type": "INPUT",
+          "x": 80,
+          "y": 260,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "B"
+        },
+        {
+          "id": 2,
+          "type": "XOR",
+          "x": 320,
+          "y": 140,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 3,
+          "type": "AND",
+          "x": 320,
+          "y": 280,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 4,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 140,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "SUM"
+        },
+        {
+          "id": 5,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 280,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "CARRY"
+        }
+      ],
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 2,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 1,
+          "toId": 2,
+          "toIndex": 1
+        },
+        {
+          "id": 2,
+          "fromId": 0,
+          "toId": 3,
+          "toIndex": 0
+        },
+        {
+          "id": 3,
+          "fromId": 1,
+          "toId": 3,
+          "toIndex": 1
+        },
+        {
+          "id": 4,
+          "fromId": 2,
+          "toId": 4,
+          "toIndex": 0
+        },
+        {
+          "id": 5,
+          "fromId": 3,
+          "toId": 5,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 6,
+      "wireIdCounter": 6,
+      "inputCounter": 2,
+      "outputCounter": 2,
+      "explanation": "This circuit uses inputs A, B, a XOR gate, an AND gate, output SUM, CARRY. Signal flows from A into XOR. This feeds into an equality check. Signal flows from B into XOR. This feeds into an equality check. Signal flows from A into AND. This feeds into an AND condition. Signal flows from B into AND. This feeds into an AND condition. Signal flows from XOR into SUM. The result appears at output SUM. Signal flows from AND into CARRY. The result appears at output CARRY.",
+      "component_details": [
+        {
+          "id": 0,
+          "label": "A",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        },
+        {
+          "id": 1,
+          "label": "B",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        },
+        {
+          "id": 2,
+          "label": "XOR",
+          "type": "XOR",
+          "role": "logic gate",
+          "description": "outputs true when inputs are different"
+        },
+        {
+          "id": 3,
+          "label": "AND",
+          "type": "AND",
+          "role": "logic gate",
+          "description": "outputs true only when all inputs are true"
+        },
+        {
+          "id": 4,
+          "label": "SUM",
+          "type": "OUTPUT",
+          "role": "output",
+          "description": "receives and displays the final output signal"
+        },
+        {
+          "id": 5,
+          "label": "CARRY",
+          "type": "OUTPUT",
+          "role": "output",
+          "description": "receives and displays the final output signal"
+        }
+      ],
+      "flow_description": "Signal flows from A into XOR. This feeds into an equality check. Signal flows from B into XOR. This feeds into an equality check. Signal flows from A into AND. This feeds into an AND condition. Signal flows from B into AND. This feeds into an AND condition. Signal flows from XOR into SUM. The result appears at output SUM. Signal flows from AND into CARRY. The result appears at output CARRY.",
       "warnings": []
     }
   },
   {
-    "label": "LED Without Resistor",
+    "label": "No Input Gate (warning expected)",
     "input": {
-      "components": [
-        "battery",
-        "led"
-      ],
-      "connections": [
-        "battery -> led"
-      ]
-    },
-    "output": {
-      "explanation": "This circuit uses a battery (power source) that provides electrical energy to the circuit, and a led (light emitter) that emits light when current flows through it. Current flows from the battery \u2192 led. This causes the LED to emit light.",
-      "component_details": [
+      "gates": [
         {
-          "name": "battery",
-          "role": "power source",
-          "description": "provides electrical energy to the circuit"
+          "id": 0,
+          "type": "AND",
+          "x": 300,
+          "y": 160,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
         },
         {
-          "name": "led",
-          "role": "light emitter",
-          "description": "emits light when current flows through it"
+          "id": 1,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 160,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
         }
       ],
-      "flow_description": "Current flows from the battery \u2192 led. This causes the LED to emit light.",
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 1,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 2,
+      "wireIdCounter": 1,
+      "inputCounter": 0,
+      "outputCounter": 1
+    },
+    "output": {
+      "gates": [
+        {
+          "id": 0,
+          "type": "AND",
+          "x": 300,
+          "y": 160,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 1,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 160,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
+        }
+      ],
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 1,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 2,
+      "wireIdCounter": 1,
+      "inputCounter": 0,
+      "outputCounter": 1,
+      "explanation": "This circuit uses an AND gate, output Z. Signal flows from AND into Z. The result appears at output Z.",
+      "component_details": [
+        {
+          "id": 0,
+          "label": "AND",
+          "type": "AND",
+          "role": "logic gate",
+          "description": "outputs true only when all inputs are true"
+        },
+        {
+          "id": 1,
+          "label": "Z",
+          "type": "OUTPUT",
+          "role": "output",
+          "description": "receives and displays the final output signal"
+        }
+      ],
+      "flow_description": "Signal flows from AND into Z. The result appears at output Z.",
       "warnings": [
-        "'led' detected without a current-limiting component. Add a resistor to prevent burnout."
+        "No INPUT or CLOCK gate detected. The circuit has no signal source."
       ]
     }
   },
   {
-    "label": "No Power Source",
+    "label": "Disconnected Gate (warning expected)",
     "input": {
-      "components": [
-        "resistor",
-        "led"
-      ],
-      "connections": [
-        "resistor -> led"
-      ]
-    },
-    "output": {
-      "explanation": "This circuit uses a resistor (current limiter) that limits and controls the flow of current, and a led (light emitter) that emits light when current flows through it. Current flows from the resistor \u2192 led. This causes the LED to emit light.",
-      "component_details": [
+      "gates": [
         {
-          "name": "resistor",
-          "role": "current limiter",
-          "description": "limits and controls the flow of current"
+          "id": 0,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
         },
         {
-          "name": "led",
-          "role": "light emitter",
-          "description": "emits light when current flows through it"
+          "id": 1,
+          "type": "NOT",
+          "x": 300,
+          "y": 100,
+          "inputs": 1,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 2,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 100,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
+        },
+        {
+          "id": 3,
+          "type": "AND",
+          "x": 300,
+          "y": 280,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
         }
       ],
-      "flow_description": "Current flows from the resistor \u2192 led. This causes the LED to emit light.",
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 1,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 1,
+          "toId": 2,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 4,
+      "wireIdCounter": 2,
+      "inputCounter": 1,
+      "outputCounter": 1
+    },
+    "output": {
+      "gates": [
+        {
+          "id": 0,
+          "type": "INPUT",
+          "x": 80,
+          "y": 100,
+          "inputs": 0,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [
+            false
+          ],
+          "label": "A"
+        },
+        {
+          "id": 1,
+          "type": "NOT",
+          "x": 300,
+          "y": 100,
+          "inputs": 1,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        },
+        {
+          "id": 2,
+          "type": "OUTPUT",
+          "x": 560,
+          "y": 100,
+          "inputs": 1,
+          "hasOutput": false,
+          "output": null,
+          "inputValues": [],
+          "label": "Z"
+        },
+        {
+          "id": 3,
+          "type": "AND",
+          "x": 300,
+          "y": 280,
+          "inputs": 2,
+          "hasOutput": true,
+          "output": null,
+          "inputValues": [],
+          "label": null
+        }
+      ],
+      "wires": [
+        {
+          "id": 0,
+          "fromId": 0,
+          "toId": 1,
+          "toIndex": 0
+        },
+        {
+          "id": 1,
+          "fromId": 1,
+          "toId": 2,
+          "toIndex": 0
+        }
+      ],
+      "gateIdCounter": 4,
+      "wireIdCounter": 2,
+      "inputCounter": 1,
+      "outputCounter": 1,
+      "explanation": "This circuit uses inputs A, a NOT gate, an AND gate, output Z. Signal flows from A into NOT. The signal will be inverted. Signal flows from NOT into Z. The result appears at output Z.",
+      "component_details": [
+        {
+          "id": 0,
+          "label": "A",
+          "type": "INPUT",
+          "role": "input",
+          "description": "provides an input signal to the circuit"
+        },
+        {
+          "id": 1,
+          "label": "NOT",
+          "type": "NOT",
+          "role": "logic gate",
+          "description": "inverts the input signal"
+        },
+        {
+          "id": 2,
+          "label": "Z",
+          "type": "OUTPUT",
+          "role": "output",
+          "description": "receives and displays the final output signal"
+        },
+        {
+          "id": 3,
+          "label": "AND",
+          "type": "AND",
+          "role": "logic gate",
+          "description": "outputs true only when all inputs are true"
+        }
+      ],
+      "flow_description": "Signal flows from A into NOT. The signal will be inverted. Signal flows from NOT into Z. The result appears at output Z.",
       "warnings": [
-        "No power source detected. The circuit cannot operate without one."
+        "Gate 'AND' (id 3) is not connected to anything."
       ]
     }
   }
