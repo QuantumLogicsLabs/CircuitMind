@@ -1,0 +1,43 @@
+# CircuitMind AI - Computer Vision Module Requirements
+# Author: SHAYAN HAIDER
+
+# Core Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0  # YOLOv8/v9
+
+# Computer Vision
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+pillow>=10.0.0
+
+# Image Augmentation
+albumentations>=1.3.0
+imgaug>=0.4.0
+
+# Scientific Computing
+numpy>=1.24.0
+scipy>=1.10.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Circuit Diagram Generation (for synthetic data)
+schemdraw>=0.15.0
+
+# API Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6  # For file uploads
+
+# MLOps & Experiment Tracking
+mlflow>=2.8.0
+wandb>=0.16.0
+
+# Data Processing
+pandas>=2.0.0
+pyyaml>=6.0
+
+# Utilities
+tqdm>=4.66.0
+python-dotenv>=1.0.0
