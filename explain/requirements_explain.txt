@@ -1,0 +1,16 @@
+# CircuitMind — Explain Module Dependencies
+# Author: Mustehsan Kazmi
+#
+# Install with:  pip install -r requirements_explain.txt
+
+# LLM API client — install ONE of these:
+groq>=0.4.0              # RECOMMENDED: free, fast (Llama 3 8B)
+# openai>=1.0.0          # Fallback: uncomment if using OpenAI
+
+# API server
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0     # optional: load .env file for API keys

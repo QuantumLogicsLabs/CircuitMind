@@ -1,132 +1,267 @@
-# Explain Module — CircuitMind
+# CircuitMind AI — Explain Module
+**Author:** Mustehsan Kazmi
+**Sub-Team:** NLP Module (Generation & Explanation)
+**Pipeline Position:** Circuit JSON → **Explain Module** → GNN Diagnosis
 
-## Overview
+---
 
-The Explain Module is part of the CircuitMind pipeline. It takes a circuit JSON (gates and wires) as input and returns the same JSON with an explanation, component details, flow description, and warnings added to it.
+## What This Module Does
 
-## How It Fits in the Pipeline
+Takes a circuit JSON (components + connections) and generates a plain-English explanation of the circuit at three levels of technical depth:
+
+| Level | Audience | Style |
+|---|---|---|
+| `beginner` | No electronics background | Simple language, analogies, no equations |
+| `intermediate` | Engineering student | Standard terminology, current/voltage flow |
+| `expert` | Senior engineer | KVL/KCL equations, fault analysis, design trade-offs |
+
+---
+
+## How It Works (Multi-Agent System)
+
+Instead of fine-tuning a model (which takes days of compute), this module uses a **two-agent prompt chain** on top of a free hosted LLM (Llama 3.1 via Groq):
 
 ```
-User Input → Generate Module → Circuit JSON → Explain Module → Explained Circuit JSON
+Circuit JSON
+     │
+     ▼
+┌─────────────────────────────────────┐
+│  Agent 1 — Circuit Analyzer         │
+│  Reads the JSON, extracts:          │
+│  - Component roles                  │
+│  - Topology type (series/parallel)  │
+│  - Circuit purpose                  │
+│  - Beginner & expert key points     │
+│  Output: structured analysis JSON   │
+└──────────────────┬──────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────┐
+│  Agent 2 — Explanation Writer       │
+│  Takes analysis + requested level   │
+│  Writes final human-readable text   │
+│  Output: explanation string         │
+└─────────────────────────────────────┘
 ```
 
-## Files
+Two agents are used because splitting "understand the circuit" and "write the explanation" into separate focused calls produces more reliable, higher-quality output than a single prompt trying to do both.
 
-| File | Description |
-|------|-------------|
-| `explain_module.py` | Core module — all logic lives here |
-| `test_cases.py` | Runs 5 test cases and saves results to JSON |
-| `test_results.json` | Output from running test_cases.py |
+---
 
-## Input Format
+## File Structure
 
-The module accepts the standard CircuitMind circuit JSON format:
-
-```json
-{
-  "gates": [
-    { "id": 0, "type": "XNOR",   "x": 460, "y": 180, "inputs": 2, "hasOutput": true,  "output": null, "inputValues": [], "label": null },
-    { "id": 1, "type": "OUTPUT", "x": 760, "y": 140, "inputs": 1, "hasOutput": false, "output": null, "inputValues": [], "label": "Z" },
-    { "id": 2, "type": "INPUT",  "x": 80,  "y": 100, "inputs": 0, "hasOutput": true,  "output": null, "inputValues": [false], "label": "A" },
-    { "id": 3, "type": "INPUT",  "x": 80,  "y": 320, "inputs": 0, "hasOutput": true,  "output": null, "inputValues": [false], "label": "B" }
-  ],
-  "wires": [
-    { "id": 0, "fromId": 0, "toId": 1, "toIndex": 0 },
-    { "id": 1, "fromId": 2, "toId": 0, "toIndex": 0 },
-    { "id": 2, "fromId": 3, "toId": 0, "toIndex": 1 }
-  ],
-  "gateIdCounter": 4,
-  "wireIdCounter": 3,
-  "inputCounter": 2,
-  "outputCounter": 1
-}
+```
+CircuitMinds-Explain/
+│
+├── explain_module.py        # Core logic — two-agent system
+├── explain_api.py           # FastAPI router — plugs into master pipeline
+├── test_explain.py          # Test script with hardcoded mock circuits
+├── requirements_explain.txt # Dependencies
+└── README.md                # This file
 ```
 
-## Output Format
+---
 
-The module returns the original circuit JSON with these fields added:
+## Setup
 
-```json
-{
-  "gates": [ ... ],
-  "wires": [ ... ],
-  "explanation": "This circuit uses inputs A, B, an XNOR gate, and output Z. Signal flows from A into XNOR...",
-  "component_details": [
-    { "id": 0, "label": "XNOR",   "type": "XNOR",   "role": "logic gate", "description": "outputs true when both inputs are the same" },
-    { "id": 1, "label": "Z",      "type": "OUTPUT",  "role": "output",     "description": "receives and displays the final output signal" },
-    { "id": 2, "label": "A",      "type": "INPUT",   "role": "input",      "description": "provides an input signal to the circuit" },
-    { "id": 3, "label": "B",      "type": "INPUT",   "role": "input",      "description": "provides an input signal to the circuit" }
-  ],
-  "flow_description": "Signal flows from A into XNOR. Signal flows from B into XNOR. Signal flows from XNOR into Z. The result appears at output Z.",
-  "warnings": []
-}
+### 1. Install Dependencies
+```bash
+pip install -r requirements_explain.txt
 ```
 
-## Usage
+### 2. Get a Free Groq API Key
+- Go to [console.groq.com](https://console.groq.com)
+- Sign up and create an API key
+
+### 3. Set the API Key
+
+**Windows (PowerShell):**
+```powershell
+$env:GROQ_API_KEY="your_key_here"
+```
+
+**Mac/Linux:**
+```bash
+export GROQ_API_KEY="your_key_here"
+```
+
+**Or use a `.env` file (recommended):**
+```
+GROQ_API_KEY=your_key_here
+```
+Then add `from dotenv import load_dotenv; load_dotenv()` at the top of `explain_module.py`.
+
+---
+
+## Running the Test Script
+
+```bash
+python test_explain.py
+```
+
+This runs three mock circuits through the pipeline:
+- Basic LED Circuit → beginner level
+- AND-NOT-OR Logic Chain → expert level
+- Voltage Divider → intermediate level
+
+No upstream modules needed — uses hardcoded JSON payloads.
+
+---
+
+## Using the Module in Code
 
 ```python
 from explain_module import explain_circuit
 
-circuit = {
-    "gates": [...],
-    "wires": [...]
+circuit_json = {
+    "components": [
+        {"id": "C1", "type": "BATTERY",  "value": "9V",    "label": "Power Supply"},
+        {"id": "C2", "type": "RESISTOR", "value": "220ohm","label": "Current Limiter"},
+        {"id": "C3", "type": "LED",      "value": None,    "label": "Output LED"}
+    ],
+    "connections": [
+        {"from": "C1", "to": "C2", "wire_id": "W1"},
+        {"from": "C2", "to": "C3", "wire_id": "W2"},
+        {"from": "C3", "to": "C1", "wire_id": "W3"}
+    ]
 }
 
-result = explain_circuit(circuit)
+result = explain_circuit(circuit_json, level="beginner")
 print(result["explanation"])
 ```
 
-For multiple circuits at once:
+### Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `circuit_json` | `dict` | required | Standard CircuitMind JSON |
+| `level` | `str` | `"beginner"` | `"beginner"` / `"intermediate"` / `"expert"` |
+| `return_analysis` | `bool` | `False` | If `True`, also returns Agent 1's analysis object |
+
+### Return Value
 
 ```python
-from explain_module import explain_circuits_batch
-
-results = explain_circuits_batch([circuit1, circuit2])
+{
+    "level":       "beginner",
+    "explanation": "This circuit lights up an LED using a battery...",
+    "analysis":    { ... }   # only present if return_analysis=True
+}
 ```
 
-## Supported Gate Types
+---
 
-| Gate | Role | Description |
-|------|------|-------------|
-| INPUT | input | Provides an input signal to the circuit |
-| OUTPUT | output | Receives and displays the final output signal |
-| AND | logic gate | Outputs true only when all inputs are true |
-| OR | logic gate | Outputs true when at least one input is true |
-| NOT | logic gate | Inverts the input signal |
-| NAND | logic gate | Outputs false only when all inputs are true |
-| NOR | logic gate | Outputs false when at least one input is true |
-| XOR | logic gate | Outputs true when inputs are different |
-| XNOR | logic gate | Outputs true when both inputs are the same |
-| BUFFER | logic gate | Passes the input signal through unchanged |
-| MUX | multiplexer | Selects one of several inputs based on a selector |
-| DEMUX | demultiplexer | Routes a single input to one of several outputs |
-| DFLIP | flip-flop | Stores a single bit of data on a clock edge |
-| TFLIP | flip-flop | Toggles its output on each clock pulse |
-| CLOCK | clock | Generates a periodic signal to drive sequential logic |
+## FastAPI Integration (For Team Captain)
 
-Unknown gate types are handled gracefully — they are included with a warning instead of crashing.
+In the master FastAPI app, add these two lines:
 
-## Warnings
-
-The module automatically checks for common circuit issues:
-
-| Warning | Condition |
-|---------|-----------|
-| No input source | No INPUT or CLOCK gate in the circuit |
-| No output | No OUTPUT gate in the circuit |
-| Disconnected gate | A gate has no wires connected to it |
-| Unknown gate type | Gate type not found in the knowledge base |
-
-## Running the Tests
-
-```bash
-python test_cases.py
+```python
+from explain_api import router as explain_router
+app.include_router(explain_router)
 ```
 
-This runs 5 test cases and saves the results to `test_results.json` in the same folder.
+This exposes two endpoints:
 
-## Notes
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/explain/` | Main explanation endpoint |
+| `GET` | `/explain/health` | Health check |
 
-- Gate type names are case-insensitive — `"xnor"`, `"XNOR"` both work
-- The original circuit JSON is preserved in full in the output — only new fields are added
-- The module has no external dependencies beyond the Python standard library
+### Example Request Body
+
+```json
+{
+    "circuit": {
+        "components": [
+            {"id": "C1", "type": "BATTERY", "value": "9V", "label": "Power Supply"},
+            {"id": "C2", "type": "RESISTOR", "value": "220ohm", "label": "R1"},
+            {"id": "C3", "type": "LED", "value": null, "label": "LED1"}
+        ],
+        "connections": [
+            {"from": "C1", "to": "C2", "wire_id": "W1"},
+            {"from": "C2", "to": "C3", "wire_id": "W2"},
+            {"from": "C3", "to": "C1", "wire_id": "W3"}
+        ]
+    },
+    "level": "expert",
+    "return_analysis": false
+}
+```
+
+### Example Response
+
+```json
+{
+    "level": "expert",
+    "explanation": "This series circuit employs a current-limiting resistor...",
+    "analysis": null
+}
+```
+
+---
+
+## Circuit JSON Schema
+
+This module expects the standard CircuitMind project schema:
+
+```json
+{
+    "components": [
+        {
+            "id":    "C1",
+            "type":  "RESISTOR",
+            "value": "220ohm",
+            "label": "Current Limiter"
+        }
+    ],
+    "connections": [
+        {
+            "from":    "C1",
+            "to":      "C2",
+            "wire_id": "W1"
+        }
+    ],
+    "metadata": {}
+}
+```
+
+Supported component types include: `BATTERY`, `RESISTOR`, `LED`, `CAPACITOR`, `GROUND`, `INPUT`, `OUTPUT`, `AND`, `OR`, `NOT`, `XOR`, `NAND`, `NOR` and any other type — Agent 1 handles unknown types gracefully.
+
+---
+
+## Pipeline Integration (When Haseeb's Module is Ready)
+
+Currently `test_explain.py` uses hardcoded JSON. When Haseeb's Text-to-Circuit Generator is complete, the swap is straightforward:
+
+**Before (testing):**
+```python
+circuit_json = MOCK_LED_CIRCUIT   # hardcoded
+result = explain_circuit(circuit_json, level="beginner")
+```
+
+**After (live pipeline):**
+```python
+circuit_json = haseeb_module.generate(user_prompt)   # live
+result = explain_circuit(circuit_json, level="beginner")
+```
+
+Zero changes needed inside `explain_module.py`.
+
+---
+
+## Dependencies
+
+| Package | Purpose |
+|---|---|
+| `groq` | LLM API client (Llama 3.1 8B) |
+| `fastapi` | REST API framework |
+| `uvicorn` | ASGI server |
+| `pydantic` | Request/response validation |
+| `python-dotenv` | Optional — load `.env` file |
+
+---
+
+## Model
+
+**Current model:** `llama-3.1-8b-instant` via Groq API
+
+Free tier is sufficient for development and demo. No GPU required, no training required.
