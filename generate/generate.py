@@ -9,6 +9,7 @@ Strategy: LLM (Groq) first → rule-based fallback if LLM is unavailable.
 import json
 import os
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +65,22 @@ _RULES = [
     (["rc", "filter"],                         "RC Filter Circuit",        ["power_supply", "resistor", "capacitor"],              ["power_supply -> resistor -> capacitor -> ground"],    "RC low-pass filter circuit"),
 ]
 
+def _matches(prompt: str, keywords: list) -> bool:
+    """
+    Return True only if a keyword appears as a whole word in the prompt.
+
+    Substring matching is too greedy: "rc" would match inside "circuit"
+    and "led" would match inside "bleeding". Word-boundary regex prevents
+    these false positives.
+    """
+    return any(
+        re.search(rf"\b{re.escape(kw)}\b", prompt) for kw in keywords
+    )
+
 def generate_with_rules(prompt: str) -> dict:
     p = prompt.lower()
     for keywords, name, components, connections, description in _RULES:
-        if any(kw in p for kw in keywords):
+        if _matches(p, keywords):
             return {
                 "circuit_name": name,
                 "components":   components,
@@ -130,6 +143,7 @@ def generate_with_llm(prompt: str) -> dict:
         ],
         max_tokens=512,
         temperature=0.2,
+        response_format={"type": "json_object"},  # enforce valid JSON output
     )
 
     raw = completion.choices[0].message.content.strip()
