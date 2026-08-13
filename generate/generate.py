@@ -87,6 +87,67 @@ def generate_with_rules(prompt: str) -> dict:
 
 
 # ── LLM Generation ────────────────────────────────────────────────────────────
+ALLOWED_COMPONENTS = {
+    "battery", "power_supply", "solar_cell",
+    "resistor", "capacitor", "inductor", "potentiometer",
+    "diode", "led", "zener_diode",
+    "transistor", "npn_transistor", "pnp_transistor", "mosfet",
+    "op_amp", "555_timer", "arduino", "microcontroller",
+    "buzzer", "motor", "dc_motor", "speaker", "relay",
+    "display", "lcd",
+    "ldr", "thermistor", "photodiode", "button", "switch", "sensor",
+    "ground", "fuse", "transformer",
+
+    # Digital logic components used by rule-based generation/export
+    "input_a", "input_b", "input_c", "input_din", "sel",
+    "xor", "xnor", "and", "or", "not", "nand", "nor",
+    "xor1", "xor2", "and1", "and2", "or1", "not1", "not2",
+    "not_a", "not_b",
+    "cin", "bin", "cout",
+}
+
+def _validate_llm_output(result: dict) -> bool:
+    """Validate the structure and component names returned by the LLM."""
+
+    if not isinstance(result, dict):
+        return False
+
+    required_keys = {"circuit_name", "components", "connections"}
+
+    if not required_keys.issubset(result):
+        return False
+
+    if not isinstance(result["components"], list):
+        return False
+
+    if len(result["components"]) == 0:
+        return False
+
+    if not isinstance(result["connections"], list):
+        return False
+
+    if len(result["connections"]) == 0:
+        return False
+
+    if not all(isinstance(conn, str) for conn in result["connections"]):
+        return False
+
+    for comp in result["components"]:
+        if not isinstance(comp, str):
+            return False
+
+        normalized = (
+            comp.strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+
+        if normalized not in ALLOWED_COMPONENTS:
+            return False
+
+    return True
+
 
 _SYSTEM_PROMPT = (
     "You are a circuit generator AI. "
@@ -139,7 +200,12 @@ def generate_with_llm(prompt: str) -> dict:
         parts = raw.split("```")
         raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
 
-    result = json.loads(raw)   # raises JSONDecodeError if invalid
+    result = json.loads(raw)
+
+    if not _validate_llm_output(result):
+       logger.warning("LLM output failed schema validation")
+       raise ValueError("LLM output failed schema validation")
+
     result["source"] = "llm"
     return result
 

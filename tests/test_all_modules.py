@@ -70,6 +70,30 @@ class TestGenerate:
             result = generate_circuit(prompt)
             assert isinstance(result, dict)
 
+    def test_llm_output_validation_rejects_bad_components(self):
+        from generate.generate import _validate_llm_output
+
+        bad_output = {
+           "components": ["red_led_5mm", "9v_battery"],
+           "connections": ["a -> b"]
+        }
+
+        assert _validate_llm_output(bad_output) is False
+
+
+    def test_llm_output_validation_accepts_good_output(self):
+        from generate.generate import _validate_llm_output
+
+        good_output = {
+           "circuit_name": "LED Circuit",
+           "components": ["battery", "resistor", "led"],
+           "connections": ["battery -> resistor -> led"]
+        }
+
+        assert _validate_llm_output(good_output) is True
+
+
+
 
 # ── Explain ────────────────────────────────────────────────────────────────────
 
