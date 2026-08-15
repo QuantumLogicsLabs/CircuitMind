@@ -69,6 +69,16 @@ class TestGenerate:
         for prompt in ["led", "motor", "unknown xyz circuit", "", "ab"]:
             result = generate_circuit(prompt)
             assert isinstance(result, dict)
+    
+    def test_auto_diagnosis_attached(self):
+        from generate.generate import generate_circuit
+
+        result = generate_circuit("make me a LED circuit")
+
+        assert "auto_diagnosis" in result
+        assert isinstance(result["auto_diagnosis"], dict)
+        assert "passed" in result["auto_diagnosis"]
+        assert "issues" in result["auto_diagnosis"]
 
 
 # ── Explain ────────────────────────────────────────────────────────────────────

@@ -155,11 +155,37 @@ def generate_circuit(user_prompt: str) -> dict:
     try:
         clean_prompt = validate_input(user_prompt)
     except ValueError as e:
-        return {"error": str(e), "error_code": "INVALID_INPUT", "components": [], "connections": []}
+        return {
+            "error": str(e),
+            "error_code": "INVALID_INPUT",
+            "components": [],
+            "connections": [],
+        }
 
     try:
         logger.info("Attempting LLM generation via Groq")
-        return generate_with_llm(clean_prompt)
+        result = generate_with_llm(clean_prompt)
     except Exception as e:
-        logger.warning(f"LLM unavailable ({e}), falling back to rule-based generation")
-        return generate_with_rules(clean_prompt)
+        logger.warning(
+            f"LLM unavailable ({e}), falling back to rule-based generation"
+        )
+        result = generate_with_rules(clean_prompt)
+
+    # Automatically diagnose the generated circuit
+    try:
+        from diagnose.diagnose_module import diagnose_circuit
+
+        diagnosis = diagnose_circuit(result)
+        result["auto_diagnosis"] = diagnosis
+
+        if not diagnosis["passed"]:
+            result["warnings"] = [
+                issue
+                for issue in diagnosis["issues"]
+                if issue.startswith("Warning")
+            ]
+
+    except Exception as e:
+        logger.warning(f"Automatic diagnosis failed: {e}")
+
+    return result
