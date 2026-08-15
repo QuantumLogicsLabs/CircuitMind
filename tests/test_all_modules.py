@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from generate.generate import generate_circuit
+from generate.generate import generate_circuit, generate_with_rules
 from explain.explain_module import explain_circuit
 from diagnose.diagnose_module import diagnose_circuit
 from export.export_module import export_module
@@ -69,6 +69,23 @@ class TestGenerate:
         for prompt in ["led", "motor", "unknown xyz circuit", "", "ab"]:
             result = generate_circuit(prompt)
             assert isinstance(result, dict)
+
+    def test_new_digital_logic_templates(self):
+        test_cases = [
+            ("make an sr latch", "SR Latch"),
+            ("make a d flip flop", "D Flip-Flop"),
+            ("make a jk flip flop", "JK Flip-Flop"),
+            ("make a t flip flop", "T Flip-Flop"),
+            ("make a 4 to 1 mux", "4-to-1 Multiplexer"),
+            ("make a priority encoder", "Priority Encoder"),
+            ("make a 4 bit adder", "4-Bit Ripple Carry Adder"),
+        ]
+
+        for prompt, expected_name in test_cases:
+            result = generate_with_rules(prompt)
+            assert result["circuit_name"] == expected_name
+            assert result["components"]
+            assert result["connections"]
 
 
 # ── Explain ────────────────────────────────────────────────────────────────────
