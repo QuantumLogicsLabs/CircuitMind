@@ -87,6 +87,67 @@ def generate_with_rules(prompt: str) -> dict:
 
 
 # ── LLM Generation ────────────────────────────────────────────────────────────
+ALLOWED_COMPONENTS = {
+    "battery", "power_supply", "solar_cell",
+    "resistor", "capacitor", "inductor", "potentiometer",
+    "diode", "led", "zener_diode",
+    "transistor", "npn_transistor", "pnp_transistor", "mosfet",
+    "op_amp", "555_timer", "arduino", "microcontroller",
+    "buzzer", "motor", "dc_motor", "speaker", "relay",
+    "display", "lcd",
+    "ldr", "thermistor", "photodiode", "button", "switch", "sensor",
+    "ground", "fuse", "transformer",
+
+    # Digital logic components used by rule-based generation/export
+    "input_a", "input_b", "input_c", "input_din", "sel",
+    "xor", "xnor", "and", "or", "not", "nand", "nor",
+    "xor1", "xor2", "and1", "and2", "or1", "not1", "not2",
+    "not_a", "not_b",
+    "cin", "bin", "cout",
+}
+
+def _validate_llm_output(result: dict) -> bool:
+    """Validate the structure and component names returned by the LLM."""
+
+    if not isinstance(result, dict):
+        return False
+
+    required_keys = {"circuit_name", "components", "connections"}
+
+    if not required_keys.issubset(result):
+        return False
+
+    if not isinstance(result["components"], list):
+        return False
+
+    if len(result["components"]) == 0:
+        return False
+
+    if not isinstance(result["connections"], list):
+        return False
+
+    if len(result["connections"]) == 0:
+        return False
+
+    if not all(isinstance(conn, str) for conn in result["connections"]):
+        return False
+
+    for comp in result["components"]:
+        if not isinstance(comp, str):
+            return False
+
+        normalized = (
+            comp.strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+
+        if normalized not in ALLOWED_COMPONENTS:
+            return False
+
+    return True
+
 
 _SYSTEM_PROMPT = (
     "You are a circuit generator AI. "
@@ -100,6 +161,39 @@ _SYSTEM_PROMPT = (
     "ldr, thermistor, photodiode, button, switch, sensor, "
     "ground, fuse, transformer"
 )
+
+_FEW_SHOT_EXAMPLES = [
+    {
+        "role": "user",
+        "content": 'Convert this into a circuit JSON:\n\n"make me a basic LED circuit"\n\nUse exactly this format:\n'
+                   '{\n'
+                   '  "circuit_name": "name",\n'
+                   '  "components": ["c1", "c2"],\n'
+                   '  "connections": ["c1 -> c2"],\n'
+                   '  "confidence": "high",\n'
+                   '  "description": "explanation"\n'
+                   '}'
+    },
+    {
+        "role": "assistant",
+        "content": '{"circuit_name": "LED Circuit", "components": ["battery", "resistor", "led"], "connections": ["battery -> resistor -> led"], "confidence": "high", "description": "Basic LED circuit with current-limiting resistor"}'
+    },
+    {
+        "role": "user",
+        "content": 'Convert this into a circuit JSON:\n\n"build a half adder"\n\nUse exactly this format:\n'
+                   '{\n'
+                   '  "circuit_name": "name",\n'
+                   '  "components": ["c1", "c2"],\n'
+                   '  "connections": ["c1 -> c2"],\n'
+                   '  "confidence": "high",\n'
+                   '  "description": "explanation"\n'
+                   '}'
+    },
+    {
+        "role": "assistant",
+        "content": '{"circuit_name": "Half Adder Circuit", "components": ["input_a", "input_b", "xor", "and", "sum_output", "carry_output"], "connections": ["input_a -> xor -> sum_output", "input_b -> xor", "input_a -> and -> carry_output", "input_b -> and"], "confidence": "high", "description": "Half adder circuit computing sum and carry"}'
+    }
+]
 
 _USER_TEMPLATE = (
     'Convert this into a circuit JSON:\n\n"{prompt}"\n\n'
@@ -126,6 +220,7 @@ def generate_with_llm(prompt: str) -> dict:
         model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
+            *_FEW_SHOT_EXAMPLES,
             {"role": "user",   "content": _USER_TEMPLATE.format(prompt=prompt)},
         ],
         max_tokens=512,
@@ -139,7 +234,12 @@ def generate_with_llm(prompt: str) -> dict:
         parts = raw.split("```")
         raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
 
-    result = json.loads(raw)   # raises JSONDecodeError if invalid
+    result = json.loads(raw)
+
+    if not _validate_llm_output(result):
+       logger.warning("LLM output failed schema validation")
+       raise ValueError("LLM output failed schema validation")
+
     result["source"] = "llm"
     return result
 
