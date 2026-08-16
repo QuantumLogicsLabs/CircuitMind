@@ -3,6 +3,7 @@ import os
 import logging
 import time
 import json
+from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -190,10 +191,17 @@ def generate(
 ):
     logger.info(f"Generate request: '{req.prompt[:60]}'")
 
+    start = time.time()
     result = generate_circuit(req.prompt)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
 
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
     return result
 
 
@@ -206,7 +214,15 @@ def explain(
     _: None = Depends(verify_api_key),
 ):
     logger.info("Explain request received")
-    return explain_circuit(req.circuit_json)
+    start = time.time()
+    result = explain_circuit(req.circuit_json)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return result
 
 
 @app.post("/diagnose", tags=["core"], deprecated=True)
@@ -218,7 +234,15 @@ def diagnose(
     _: None = Depends(verify_api_key),
 ):
     logger.info("Diagnose request received")
-    return diagnose_circuit(req.circuit_json)
+    start = time.time()
+    result = diagnose_circuit(req.circuit_json)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return result
 
 
 @app.post("/export", tags=["core"], deprecated=True)
@@ -231,12 +255,18 @@ def export(
 ):
     logger.info(f"Export request: format={req.export_format}")
 
+    start = time.time()
     json_str = json.dumps(req.circuit_json)
     result = export_module(json_str, export_format=req.export_format)
+    processing_ms = round((time.time() - start) * 1000, 1)
 
     if result.get("status") == "error":
         raise HTTPException(status_code=422, detail=result["message"])
 
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
     return result
 
 
@@ -249,7 +279,15 @@ def hint(
     _: None = Depends(verify_api_key),
 ):
     logger.info(f"Hint request: '{req.problem_title[:60]}'")
-    return generate_hint(req.model_dump())
+    start = time.time()
+    result = generate_hint(req.model_dump())
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return result
 
 
 @app.post("/generate-and-explain", tags=["core"], deprecated=True)
@@ -262,14 +300,23 @@ def generate_and_explain(
 ):
     logger.info(f"Generate-and-explain request: '{req.prompt[:60]}'")
 
+    start = time.time()
     circuit = generate_circuit(req.prompt)
     if "error" in circuit:
         raise HTTPException(status_code=422, detail=circuit["error"])
 
+    explanation = explain_circuit(circuit)
+    diagnosis = diagnose_circuit(circuit)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
     return {
         "circuit": circuit,
-        "explanation": explain_circuit(circuit),
-        "diagnosis": diagnose_circuit(circuit),
+        "explanation": explanation,
+        "diagnosis": diagnosis,
+        "_meta": {
+            "processing_time_ms": processing_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     }
 
 
@@ -283,6 +330,7 @@ def generate_and_export(
 ):
     logger.info(f"Generate-and-export request: '{req.prompt[:60]}', format={req.export_format}")
 
+    start = time.time()
     circuit = generate_circuit(req.prompt)
     if "error" in circuit:
         raise HTTPException(status_code=422, detail=circuit["error"])
@@ -290,13 +338,19 @@ def generate_and_export(
     export_result = export_module(json.dumps(circuit), export_format=req.export_format)
     if export_result.get("status") == "error":
         raise HTTPException(status_code=422, detail=export_result["message"])
+    processing_ms = round((time.time() - start) * 1000, 1)
 
     return {
         "circuit": circuit,
         "export": export_result,
+        "_meta": {
+            "processing_time_ms": processing_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     }
 
 
 # ── ROUTER MOUNT ────────────────────────────────────────────────
 app.include_router(v1)
+
 
