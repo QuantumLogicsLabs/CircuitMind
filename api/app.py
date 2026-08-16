@@ -3,10 +3,11 @@ import os
 import logging
 import time
 import json
+from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
+from fastapi import FastAPI, HTTPException, Request, Depends, Header, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
@@ -53,6 +54,9 @@ app.state.limiter = limiter
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# ── V1 ROUTER ───────────────────────────────────────────────────
+v1 = APIRouter(prefix="/v1", tags=["v1"])
 
 # ── API KEY SECURITY ─────────────────────────────────────────────
 API_KEY = os.environ.get("CIRCUITMIND_API_KEY")
@@ -131,6 +135,27 @@ class ExportRequest(BaseModel):
             raise ValueError(f"export_format must be one of {allowed}")
         return v
 
+class GenerateAndExportRequest(BaseModel):
+    prompt: str
+    export_format: Optional[str] = "gate_json"
+
+    @field_validator("prompt")
+    @classmethod
+    def prompt_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("prompt cannot be empty")
+        if len(v) > 1000:
+            raise ValueError("prompt must be under 1000 characters")
+        return v.strip()
+
+    @field_validator("export_format")
+    @classmethod
+    def valid_format(cls, v: str) -> str:
+        allowed = {"spice", "svg", "gate_json"}
+        if v not in allowed:
+            raise ValueError(f"export_format must be one of {allowed}")
+        return v
+
 class HintRequest(BaseModel):
     problem_title: str = ""
     problem_description: Optional[str] = ""
@@ -156,7 +181,8 @@ def health():
 
 # ── CORE ENDPOINTS ───────────────────────────────────────────────
 
-@app.post("/generate", tags=["core"])
+@app.post("/generate", tags=["core"], deprecated=True)
+@v1.post("/generate")
 @rl("5/minute")
 def generate(
     request: Request,
@@ -165,14 +191,22 @@ def generate(
 ):
     logger.info(f"Generate request: '{req.prompt[:60]}'")
 
+    start = time.time()
     result = generate_circuit(req.prompt)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
     if "error" in result:
         raise HTTPException(status_code=422, detail=result["error"])
 
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
     return result
 
 
-@app.post("/explain", tags=["core"])
+@app.post("/explain", tags=["core"], deprecated=True)
+@v1.post("/explain")
 @rl("10/minute")
 def explain(
     request: Request,
@@ -180,10 +214,19 @@ def explain(
     _: None = Depends(verify_api_key),
 ):
     logger.info("Explain request received")
-    return explain_circuit(req.circuit_json)
+    start = time.time()
+    result = explain_circuit(req.circuit_json)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return result
 
 
-@app.post("/diagnose", tags=["core"])
+@app.post("/diagnose", tags=["core"], deprecated=True)
+@v1.post("/diagnose")
 @rl("10/minute")
 def diagnose(
     request: Request,
@@ -191,10 +234,19 @@ def diagnose(
     _: None = Depends(verify_api_key),
 ):
     logger.info("Diagnose request received")
-    return diagnose_circuit(req.circuit_json)
+    start = time.time()
+    result = diagnose_circuit(req.circuit_json)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return result
 
 
-@app.post("/export", tags=["core"])
+@app.post("/export", tags=["core"], deprecated=True)
+@v1.post("/export")
 @rl("10/minute")
 def export(
     request: Request,
@@ -203,16 +255,23 @@ def export(
 ):
     logger.info(f"Export request: format={req.export_format}")
 
+    start = time.time()
     json_str = json.dumps(req.circuit_json)
     result = export_module(json_str, export_format=req.export_format)
+    processing_ms = round((time.time() - start) * 1000, 1)
 
     if result.get("status") == "error":
         raise HTTPException(status_code=422, detail=result["message"])
 
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
     return result
 
 
-@app.post("/hint", tags=["core"])
+@app.post("/hint", tags=["core"], deprecated=True)
+@v1.post("/hint")
 @rl("10/minute")
 def hint(
     request: Request,
@@ -220,10 +279,19 @@ def hint(
     _: None = Depends(verify_api_key),
 ):
     logger.info(f"Hint request: '{req.problem_title[:60]}'")
-    return generate_hint(req.model_dump())
+    start = time.time()
+    result = generate_hint(req.model_dump())
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    result["_meta"] = {
+        "processing_time_ms": processing_ms,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    return result
 
 
-@app.post("/generate-and-explain", tags=["core"])
+@app.post("/generate-and-explain", tags=["core"], deprecated=True)
+@v1.post("/generate-and-explain")
 @rl("3/minute")
 def generate_and_explain(
     request: Request,
@@ -232,12 +300,57 @@ def generate_and_explain(
 ):
     logger.info(f"Generate-and-explain request: '{req.prompt[:60]}'")
 
+    start = time.time()
     circuit = generate_circuit(req.prompt)
     if "error" in circuit:
         raise HTTPException(status_code=422, detail=circuit["error"])
 
+    explanation = explain_circuit(circuit)
+    diagnosis = diagnose_circuit(circuit)
+    processing_ms = round((time.time() - start) * 1000, 1)
+
     return {
         "circuit": circuit,
-        "explanation": explain_circuit(circuit),
-        "diagnosis": diagnose_circuit(circuit),
+        "explanation": explanation,
+        "diagnosis": diagnosis,
+        "_meta": {
+            "processing_time_ms": processing_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     }
+
+
+@app.post("/generate-and-export", tags=["core"], deprecated=True)
+@v1.post("/generate-and-export")
+@rl("5/minute")
+def generate_and_export(
+    request: Request,
+    req: GenerateAndExportRequest,
+    _: None = Depends(verify_api_key),
+):
+    logger.info(f"Generate-and-export request: '{req.prompt[:60]}', format={req.export_format}")
+
+    start = time.time()
+    circuit = generate_circuit(req.prompt)
+    if "error" in circuit:
+        raise HTTPException(status_code=422, detail=circuit["error"])
+
+    export_result = export_module(json.dumps(circuit), export_format=req.export_format)
+    if export_result.get("status") == "error":
+        raise HTTPException(status_code=422, detail=export_result["message"])
+    processing_ms = round((time.time() - start) * 1000, 1)
+
+    return {
+        "circuit": circuit,
+        "export": export_result,
+        "_meta": {
+            "processing_time_ms": processing_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+
+
+# ── ROUTER MOUNT ────────────────────────────────────────────────
+app.include_router(v1)
+
+
