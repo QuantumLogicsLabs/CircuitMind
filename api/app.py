@@ -6,7 +6,7 @@ import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
+from fastapi import FastAPI, HTTPException, Request, Depends, Header, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
@@ -53,6 +53,9 @@ app.state.limiter = limiter
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# ── V1 ROUTER ───────────────────────────────────────────────────
+v1 = APIRouter(prefix="/v1", tags=["v1"])
 
 # ── API KEY SECURITY ─────────────────────────────────────────────
 API_KEY = os.environ.get("CIRCUITMIND_API_KEY")
@@ -177,7 +180,8 @@ def health():
 
 # ── CORE ENDPOINTS ───────────────────────────────────────────────
 
-@app.post("/generate", tags=["core"])
+@app.post("/generate", tags=["core"], deprecated=True)
+@v1.post("/generate")
 @rl("5/minute")
 def generate(
     request: Request,
@@ -193,7 +197,8 @@ def generate(
     return result
 
 
-@app.post("/explain", tags=["core"])
+@app.post("/explain", tags=["core"], deprecated=True)
+@v1.post("/explain")
 @rl("10/minute")
 def explain(
     request: Request,
@@ -204,7 +209,8 @@ def explain(
     return explain_circuit(req.circuit_json)
 
 
-@app.post("/diagnose", tags=["core"])
+@app.post("/diagnose", tags=["core"], deprecated=True)
+@v1.post("/diagnose")
 @rl("10/minute")
 def diagnose(
     request: Request,
@@ -215,7 +221,8 @@ def diagnose(
     return diagnose_circuit(req.circuit_json)
 
 
-@app.post("/export", tags=["core"])
+@app.post("/export", tags=["core"], deprecated=True)
+@v1.post("/export")
 @rl("10/minute")
 def export(
     request: Request,
@@ -233,7 +240,8 @@ def export(
     return result
 
 
-@app.post("/hint", tags=["core"])
+@app.post("/hint", tags=["core"], deprecated=True)
+@v1.post("/hint")
 @rl("10/minute")
 def hint(
     request: Request,
@@ -244,7 +252,8 @@ def hint(
     return generate_hint(req.model_dump())
 
 
-@app.post("/generate-and-explain", tags=["core"])
+@app.post("/generate-and-explain", tags=["core"], deprecated=True)
+@v1.post("/generate-and-explain")
 @rl("3/minute")
 def generate_and_explain(
     request: Request,
@@ -264,7 +273,8 @@ def generate_and_explain(
     }
 
 
-@app.post("/generate-and-export", tags=["core"])
+@app.post("/generate-and-export", tags=["core"], deprecated=True)
+@v1.post("/generate-and-export")
 @rl("5/minute")
 def generate_and_export(
     request: Request,
@@ -284,4 +294,9 @@ def generate_and_export(
     return {
         "circuit": circuit,
         "export": export_result,
-    }
+    }
+
+
+# ── ROUTER MOUNT ────────────────────────────────────────────────
+app.include_router(v1)
+
