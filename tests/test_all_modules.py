@@ -224,6 +224,27 @@ class TestExport:
         assert result["status"] == "success"
         assert result["circuit_name"] == "CircuitMind_Generated_Circuit"
 
+    def test_generate_then_export_gate_json(self):
+        circuit = generate_circuit("make me a half adder")
+        result = export_module(json.dumps(circuit), export_format="gate_json")
+        assert result["status"] == "success"
+        assert len(result["gate_json"]["gates"]) > 0
+        assert len(result["gate_json"]["wires"]) > 0
+
+    def test_gate_json_input_output_layout(self):
+        circuit = {
+            "circuit_name": "Half Adder",
+            "components": ["input_a", "input_b", "xor", "and", "sum_output", "carry_output"],
+            "connections": ["input_a -> xor -> sum_output", "input_b -> xor",
+                            "input_a -> and -> carry_output", "input_b -> and"]
+        }
+        result = export_module(json.dumps(circuit), export_format="gate_json")
+        gates = result["gate_json"]["gates"]
+        inputs = [g for g in gates if g["type"] == "INPUT"]
+        outputs = [g for g in gates if g["type"] == "OUTPUT"]
+        assert all(ig["x"] < og["x"] for ig in inputs for og in outputs)
+
+
 
 # ── Hint ───────────────────────────────────────────────────────────────────────
 # generate_hint() prefers the LLM when GROQ_API_KEY is configured (as it is
