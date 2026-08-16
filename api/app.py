@@ -131,6 +131,27 @@ class ExportRequest(BaseModel):
             raise ValueError(f"export_format must be one of {allowed}")
         return v
 
+class GenerateAndExportRequest(BaseModel):
+    prompt: str
+    export_format: Optional[str] = "gate_json"
+
+    @field_validator("prompt")
+    @classmethod
+    def prompt_not_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("prompt cannot be empty")
+        if len(v) > 1000:
+            raise ValueError("prompt must be under 1000 characters")
+        return v.strip()
+
+    @field_validator("export_format")
+    @classmethod
+    def valid_format(cls, v: str) -> str:
+        allowed = {"spice", "svg", "gate_json"}
+        if v not in allowed:
+            raise ValueError(f"export_format must be one of {allowed}")
+        return v
+
 class HintRequest(BaseModel):
     problem_title: str = ""
     problem_description: Optional[str] = ""
@@ -241,3 +262,26 @@ def generate_and_explain(
         "explanation": explain_circuit(circuit),
         "diagnosis": diagnose_circuit(circuit),
     }
+
+
+@app.post("/generate-and-export", tags=["core"])
+@rl("5/minute")
+def generate_and_export(
+    request: Request,
+    req: GenerateAndExportRequest,
+    _: None = Depends(verify_api_key),
+):
+    logger.info(f"Generate-and-export request: '{req.prompt[:60]}', format={req.export_format}")
+
+    circuit = generate_circuit(req.prompt)
+    if "error" in circuit:
+        raise HTTPException(status_code=422, detail=circuit["error"])
+
+    export_result = export_module(json.dumps(circuit), export_format=req.export_format)
+    if export_result.get("status") == "error":
+        raise HTTPException(status_code=422, detail=export_result["message"])
+
+    return {
+        "circuit": circuit,
+        "export": export_result,
+    }
