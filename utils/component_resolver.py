@@ -57,6 +57,23 @@ COMPONENT_DB: dict[str, dict] = {
     "ground":       {"role": "reference",         "description": "provides the zero-voltage reference point"},
     "fuse":         {"role": "protection",        "description": "breaks the circuit if current exceeds a safe level"},
     "transformer":  {"role": "voltage converter", "description": "steps voltage up or down using electromagnetic induction"},
+
+    # Digital Logic Gates (Task B3)
+    "and":     {"role": "logic gate",  "description": "outputs HIGH only when all inputs are HIGH"},
+    "or":      {"role": "logic gate",  "description": "outputs HIGH when at least one input is HIGH"},
+    "not":     {"role": "logic gate",  "description": "inverts the input signal (HIGH->LOW, LOW->HIGH)"},
+    "nand":    {"role": "logic gate",  "description": "outputs LOW only when all inputs are HIGH (inverted AND)"},
+    "nor":     {"role": "logic gate",  "description": "outputs LOW when any input is HIGH (inverted OR)"},
+    "xor":     {"role": "logic gate",  "description": "outputs HIGH when an odd number of inputs are HIGH"},
+    "xnor":    {"role": "logic gate",  "description": "outputs HIGH when inputs are the same (inverted XOR)"},
+    "buffer":  {"role": "logic gate",  "description": "passes the input signal through unchanged (used for signal buffering)"},
+
+    # Logic I/O (Task B3)
+    "input_a":       {"role": "input signal",  "description": "provides a digital input signal (A)"},
+    "input_b":       {"role": "input signal",  "description": "provides a digital input signal (B)"},
+    "input_c":       {"role": "input signal",  "description": "provides a digital input signal (C)"},
+    "sum_output":    {"role": "output signal", "description": "carries the sum result of an arithmetic operation"},
+    "carry_output":  {"role": "output signal", "description": "carries the carry result of an arithmetic operation"},
 }
 
 POWER_SOURCES       = {"battery", "power_supply", "solar_cell"}
@@ -96,8 +113,59 @@ def _normalize(name: str) -> str:
     return name.strip().lower().replace(" ", "_").replace("-", "_")
 
 
+# Expanded Alias Dictionary (Task B4)
 _ALIASES = {
+    # Power
     "solar_panel": "solar_cell",
+    "9v_battery": "battery",
+    "cell": "battery",
+    "voltage_source": "power_supply",
+    "vcc": "power_supply",
+    "power": "power_supply",
+    # Passive
+    "variable_resistor": "potentiometer",
+    "pot": "potentiometer",
+    "rheostat": "potentiometer",
+    "coil": "inductor",
+    "cap": "capacitor",
+    # Diodes
+    "light_emitting_diode": "led",
+    "zener": "zener_diode",
+    # Transistors
+    "bjt": "transistor",
+    "npn": "npn_transistor",
+    "pnp": "pnp_transistor",
+    "fet": "mosfet",
+    "jfet": "mosfet",
+    # ICs
+    "timer": "555_timer",
+    "ne555": "555_timer",
+    "opamp": "op_amp",
+    "operational_amplifier": "op_amp",
+    "mcu": "microcontroller",
+    "pic": "microcontroller",
+    "esp32": "microcontroller",
+    # Output
+    "lamp": "led",
+    "light": "led",
+    "beeper": "buzzer",
+    "horn": "buzzer",
+    # Sensors
+    "photoresistor": "ldr",
+    "light_dependent_resistor": "ldr",
+    "ntc": "thermistor",
+    "temp_sensor": "thermistor",
+    "push_button": "button",
+    "momentary_switch": "button",
+    # Logic gates
+    "and_gate": "and",
+    "or_gate": "or",
+    "not_gate": "not",
+    "xor_gate": "xor",
+    "nand_gate": "nand",
+    "nor_gate": "nor",
+    "xnor_gate": "xnor",
+    "inverter": "not",
 }
 
 
