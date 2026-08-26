@@ -10,6 +10,7 @@ Converts circuit JSON into:
 
 import json
 import logging
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
@@ -217,39 +218,143 @@ def generate_svg(circuit_name: str, components: list) -> str:
 
 # ── Gate JSON generator ────────────────────────────────────────────────────────
 
+LAYER_X_GAP = 220
+LAYER_Y_GAP = 130
+ORIGIN_X = 80
+ORIGIN_Y = 80
+
+_FRIENDLY_LABELS = {
+    "INPUT_A": "A",
+    "INPUT_B": "B",
+    "INPUT_C": "C",
+    "INPUT_DIN": "D",
+    "SUM_OUTPUT": "SUM",
+    "CARRY_OUTPUT": "CARRY",
+    "DIFF_OUTPUT": "DIFF",
+    "BORROW_OUTPUT": "BORROW",
+    "PARITY_OUTPUT": "PARITY",
+    "EQ_OUT": "EQ",
+    "GT_OUT": "GT",
+    "LT_OUT": "LT",
+    "OUTPUT_Y0": "Y0",
+    "OUTPUT_Y1": "Y1",
+}
+
+
+def _classify_component(component: str, index: int, total: int) -> tuple[str, int, bool]:
+    comp_lower = component.lower()
+    if (
+        comp_lower.startswith("input")
+        or comp_lower.startswith("in_")
+        or comp_lower in ("battery", "power_supply", "solar_cell")
+        or (index == 0 and total <= 3)
+    ):
+        return "INPUT", 0, True
+    if (
+        comp_lower.startswith("output")
+        or comp_lower.endswith("_output")
+        or comp_lower.endswith("_out")
+        or comp_lower in ("cout", "sum", "carry", "led", "lamp", "buzzer")
+        or (index == total - 1 and total <= 3)
+    ):
+        return "OUTPUT", 1, False
+
+    comp_upper = component.upper()
+    if "XNOR" in comp_upper:
+        gate_type = "XNOR"
+    elif "XOR" in comp_upper:
+        gate_type = "XOR"
+    elif "NAND" in comp_upper:
+        gate_type = "NAND"
+    elif "NOR" in comp_upper:
+        gate_type = "NOR"
+    elif "AND" in comp_upper:
+        gate_type = "AND"
+    elif "OR" in comp_upper:
+        gate_type = "OR"
+    elif "NOT" in comp_upper:
+        gate_type = "NOT"
+    else:
+        gate_type = comp_upper
+    return gate_type, (1 if gate_type == "NOT" else 2), True
+
+
+def _layout_gates(gates: list, wires: list) -> None:
+    """Place gates in left-to-right columns from the wire graph (not one row)."""
+    if not gates:
+        return
+
+    ids = [g["id"] for g in gates]
+    preds = defaultdict(set)
+    succs = defaultdict(set)
+    for wire in wires:
+        succs[wire["fromId"]].add(wire["toId"])
+        preds[wire["toId"]].add(wire["fromId"])
+
+    indegree = {gid: len(preds[gid]) for gid in ids}
+    layer = {}
+    queue = deque(gid for gid in ids if indegree[gid] == 0)
+    for gid in queue:
+        layer[gid] = 0
+
+    while queue:
+        u = queue.popleft()
+        for v in succs[u]:
+            layer[v] = max(layer.get(v, 0), layer.get(u, 0) + 1)
+            indegree[v] -= 1
+            if indegree[v] == 0:
+                queue.append(v)
+
+    max_assigned = max(layer.values(), default=0)
+    for gid in ids:
+        if gid not in layer:
+            layer[gid] = max_assigned + 1
+
+    by_id = {g["id"]: g for g in gates}
+    logic_layers = [
+        layer[g["id"]] for g in gates if g["type"] != "OUTPUT"
+    ]
+    max_logic = max(logic_layers, default=0)
+    out_col = max_logic + 1
+    for g in gates:
+        if g["type"] == "INPUT":
+            layer[g["id"]] = 0
+        elif g["type"] == "OUTPUT":
+            layer[g["id"]] = out_col
+
+    columns = defaultdict(list)
+    for g in gates:
+        columns[layer[g["id"]]].append(g)
+
+    max_col_size = max((len(col) for col in columns.values()), default=1)
+    total_height = (max_col_size - 1) * LAYER_Y_GAP
+
+    for col_index, col_gates in columns.items():
+        col_height = (len(col_gates) - 1) * LAYER_Y_GAP
+        y_offset = (total_height - col_height) / 2
+        for i, g in enumerate(col_gates):
+            by_id[g["id"]]["x"] = ORIGIN_X + col_index * LAYER_X_GAP
+            by_id[g["id"]]["y"] = ORIGIN_Y + y_offset + i * LAYER_Y_GAP
+
+
 def generate_gate_json(circuit_name: str, components: list, connections: list) -> dict:
     gates  = []
     wires  = []
-    x, y   = 80, 100
     input_counter  = 0
     output_counter = 0
 
     for i, component in enumerate(components):
-        comp_lower = component.lower()
-        if comp_lower.startswith("input") or comp_lower.startswith("in_") or comp_lower in ("battery", "power_supply", "solar_cell") or (i == 0 and len(components) <= 3):
-            gate_type, num_inputs, has_output = "INPUT",  0, True
+        gate_type, num_inputs, has_output = _classify_component(component, i, len(components))
+        if gate_type == "INPUT":
             input_counter += 1
-        elif comp_lower.startswith("output") or comp_lower.endswith("_output") or comp_lower.endswith("_out") or comp_lower in ("cout", "sum", "carry", "led", "lamp", "buzzer") or (i == len(components) - 1 and len(components) <= 3):
-            gate_type, num_inputs, has_output = "OUTPUT", 1, False
+        elif gate_type == "OUTPUT":
             output_counter += 1
-        else:
-            comp_upper = component.upper()
-            if "XNOR" in comp_upper: comp_upper = "XNOR"
-            elif "XOR" in comp_upper: comp_upper = "XOR"
-            elif "NAND" in comp_upper: comp_upper = "NAND"
-            elif "NOR" in comp_upper: comp_upper = "NOR"
-            elif "AND" in comp_upper: comp_upper = "AND"
-            elif "OR" in comp_upper: comp_upper = "OR"
-            elif "NOT" in comp_upper: comp_upper = "NOT"
-            gate_type = comp_upper
-            num_inputs = 1 if comp_upper == "NOT" else 2
-            has_output = True
 
         gates.append({
             "id":          i,
             "type":        gate_type,
-            "x":           x + (i * 200),
-            "y":           y,
+            "x":           0,
+            "y":           0,
             "inputs":      num_inputs,
             "hasOutput":   has_output,
             "output":      None,
@@ -269,6 +374,11 @@ def generate_gate_json(circuit_name: str, components: list, connections: list) -
                 wires.append({"id": wire_id, "fromId": from_id, "toId": to_id, "toIndex": to_index})
                 target_pin_indices[to_id] = to_index + 1
                 wire_id += 1
+
+    _layout_gates(gates, wires)
+
+    for g in gates:
+        g["label"] = _FRIENDLY_LABELS.get(g["label"], g["label"])
 
     return {
         "gates":           gates,

@@ -70,6 +70,18 @@ class TestGenerate:
             result = generate_circuit(prompt)
             assert isinstance(result, dict)
 
+    def test_half_adder_is_not_a_subtractor(self):
+        from generate.generate import generate_with_rules
+        result = generate_with_rules("make a half adder circuit")
+        assert result["circuit_name"] == "Half Adder Circuit"
+        assert "sum_output" in result["components"]
+        assert "diff_output" not in result["components"]
+
+    def test_half_subtractor_still_matches(self):
+        from generate.generate import generate_with_rules
+        result = generate_with_rules("half subtractor")
+        assert result["circuit_name"] == "Half Subtractor Circuit"
+
 
 # ── Explain ────────────────────────────────────────────────────────────────────
 
@@ -201,6 +213,30 @@ class TestExport:
         assert result["status"] == "success"
         assert "gate_json" in result
         assert "gates" in result["gate_json"]
+
+    def test_half_adder_gate_json_is_spread_out(self):
+        circuit = {
+            "circuit_name": "Half Adder Circuit",
+            "components": ["input_a", "input_b", "xor", "and", "sum_output", "carry_output"],
+            "connections": [
+                "input_a -> xor -> sum_output",
+                "input_b -> xor",
+                "input_a -> and -> carry_output",
+                "input_b -> and",
+            ],
+        }
+        result = export_module(self._json(circuit), export_format="gate_json")
+        gates = result["gate_json"]["gates"]
+        ys = {g["y"] for g in gates}
+        input_xs = {g["x"] for g in gates if g["type"] == "INPUT"}
+        output_xs = {g["x"] for g in gates if g["type"] == "OUTPUT"}
+        assert len(ys) > 1
+        assert len(input_xs) == 1
+        assert len(output_xs) == 1
+        assert max(output_xs) > max(input_xs)
+        labels = {g["label"] for g in gates}
+        assert "SUM" in labels
+        assert "CARRY" in labels
 
     def test_empty_input(self):
         result = export_module("")
