@@ -82,6 +82,42 @@ class TestGenerate:
         result = generate_with_rules("half subtractor")
         assert result["circuit_name"] == "Half Subtractor Circuit"
 
+    def test_demultiplexer_not_shadowed_by_multiplexer(self):
+        from generate.generate import generate_with_rules
+        for prompt in ["1 to 2 demultiplexer", "demux", "demultiplexer"]:
+            result = generate_with_rules(prompt)
+            assert result["circuit_name"] == "1-to-2 Demultiplexer"
+
+    def test_rc_keyword_does_not_collide_with_circuit_or_search(self):
+        from generate.generate import generate_with_rules
+        for prompt in ["can you search for a circuit", "mystery circuit", "quantum circuit", "search"]:
+            result = generate_with_rules(prompt)
+            assert result["circuit_name"] == "Unknown"
+
+    def test_led_keyword_does_not_collide_with_suffixes(self):
+        from generate.generate import generate_with_rules
+        assert generate_with_rules("voice controlled switch")["circuit_name"] == "Unknown"
+        assert generate_with_rules("microcontroller enabled motor")["circuit_name"] == "Motor Circuit"
+        assert generate_with_rules("a well scheduled timer")["circuit_name"] == "555 Timer Circuit"
+
+    def test_plural_and_inflection_support(self):
+        from generate.generate import generate_with_rules
+        assert generate_with_rules("make a circuit with 3 leds")["circuit_name"] == "LED Circuit"
+        assert generate_with_rules("two motors")["circuit_name"] == "Motor Circuit"
+        assert generate_with_rules("cooling fans")["circuit_name"] == "Fan Circuit"
+        assert generate_with_rules("two buzzers")["circuit_name"] == "Buzzer Circuit"
+        assert generate_with_rules("analog filters")["circuit_name"] == "RC Filter Circuit"
+        assert generate_with_rules("demultiplexers")["circuit_name"] == "1-to-2 Demultiplexer"
+        assert generate_with_rules("multiplexers")["circuit_name"] == "2-to-1 Multiplexer"
+
+    def test_555_timer_ic_variants(self):
+        from generate.generate import generate_with_rules
+        assert generate_with_rules("555 timer")["circuit_name"] == "555 Timer Circuit"
+        assert generate_with_rules("ne555 circuit")["circuit_name"] == "555 Timer Circuit"
+        assert generate_with_rules("lm555 timer")["circuit_name"] == "555 Timer Circuit"
+        assert generate_with_rules("555-timer")["circuit_name"] == "555 Timer Circuit"
+        assert generate_with_rules("555_timer")["circuit_name"] == "555 Timer Circuit"
+
 
 # ── Explain ────────────────────────────────────────────────────────────────────
 

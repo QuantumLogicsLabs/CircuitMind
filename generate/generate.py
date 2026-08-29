@@ -8,6 +8,7 @@ Strategy: LLM (Groq) first → rule-based fallback if LLM is unavailable.
 
 import json
 import os
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,14 +67,35 @@ _RULES = [
     (["fan"],                                  "Fan Circuit",              ["battery", "switch", "capacitor", "dc_motor"],          ["battery -> switch -> capacitor -> dc_motor"],        "Fan circuit with capacitor for smooth startup"),
     (["temperature", "sensor"],                "Temperature Sensor",       ["battery", "thermistor", "resistor", "microcontroller"],["battery -> thermistor -> resistor -> microcontroller"],"Temperature sensing circuit using thermistor"),
     (["solar"],                                "Solar Charging Circuit",   ["solar_cell", "diode", "charge_controller", "battery"],["solar_cell -> diode -> charge_controller -> battery"],"Solar panel battery charging circuit"),
-    (["555", "timer"],                         "555 Timer Circuit",        ["battery", "555_timer", "resistor", "capacitor", "led"],["battery -> 555_timer -> resistor -> capacitor -> led"],"555 timer astable multivibrator"),
+    (["555", "ne555", "lm555", "timer"],       "555 Timer Circuit",        ["battery", "555_timer", "resistor", "capacitor", "led"],["battery -> 555_timer -> resistor -> capacitor -> led"],"555 timer astable multivibrator"),
     (["rc", "filter"],                         "RC Filter Circuit",        ["power_supply", "resistor", "capacitor"],              ["power_supply -> resistor -> capacitor -> ground"],    "RC low-pass filter circuit"),
 ]
 
+def _build_rule_patterns(rules):
+    """
+    Precompiles a regex per rule that enforces alphanumeric token boundaries
+    and accepts standard English plural inflections ('s', 'es').
+    """
+    compiled = []
+    for keywords, name, components, connections, description in rules:
+        patterns = []
+        for kw in keywords:
+            escaped = re.escape(kw)
+            if kw.endswith(('x', 'ch', 'sh')):
+                pat = rf'(?<![a-z0-9]){escaped}(?:es|s)?(?![a-z0-9])'
+            else:
+                pat = rf'(?<![a-z0-9]){escaped}s?(?![a-z0-9])'
+            patterns.append(pat)
+        combined_re = re.compile("|".join(patterns), re.IGNORECASE)
+        compiled.append((combined_re, name, components, connections, description))
+    return compiled
+
+_COMPILED_RULES = _build_rule_patterns(_RULES)
+
 def generate_with_rules(prompt: str) -> dict:
     p = prompt.lower()
-    for keywords, name, components, connections, description in _RULES:
-        if any(kw in p for kw in keywords):
+    for pattern, name, components, connections, description in _COMPILED_RULES:
+        if pattern.search(p):
             return {
                 "circuit_name": name,
                 "components":   components,
