@@ -1,10 +1,10 @@
-# ⚡ CircuitMind
+# CircuitMind
 
 > **An AI-powered electronics assistant that generates, explains, diagnoses, and exports simple circuits from a natural-language prompt.**
 
 ---
 
-## 🧠 What Is CircuitMind?
+## What it does
 
 CircuitMind is a FastAPI service (plus a Streamlit UI) that turns a plain-English request like *"make me a LED circuit"* into a structured circuit description, and can then explain it in plain English, check it for common electrical mistakes, and export it to SPICE, SVG, or a logic-gate JSON format.
 
@@ -73,7 +73,7 @@ git clone https://github.com/QuantumLogicsLabs/CircuitMind.git
 cd CircuitMind
 
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 
 pip install -r requirements.txt
 
@@ -164,9 +164,13 @@ Covers all four modules individually (`TestGenerate`, `TestExplain`, `TestDiagno
 - **`cv_module/`** (image → circuit JSON via YOLO object detection) is an unfinished, standalone experiment. It requires manually downloading trained YOLO weights, has its own `requirements_cv.txt` (`torch`, `ultralytics`, `opencv-python`), and is **not imported or exposed by `api/app.py`**.
 - Rate limiting defaults to in-memory storage, which only holds correctly within a single running process — set `RATE_LIMIT_REDIS_URL` for multi-instance/serverless deployments.
 
----
-
-## 📄 License
+```json
+{
+  "circuit_name": "LED Circuit",
+  "components": ["battery", "resistor", "led"],
+  "connections": ["battery -> resistor -> led"]
+}
+```
 
 CircuitMind is **proprietary software** — see [`LICENSE`](LICENSE) for the full terms. It is not open source; contributions and use are governed by that agreement.
 
