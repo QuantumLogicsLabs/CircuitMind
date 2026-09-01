@@ -367,6 +367,39 @@ class TestHint:
         })
         assert "C" in hint_text
 
+    def test_identify_half_adder_from_problem(self):
+        result = generate_hint({
+            "request_type": "identify",
+            "problem_title": "Half Adder",
+            "inputs": ["A", "B"],
+            "outputs": ["S", "C"],
+            "gates": [],
+            "wires": [],
+        })
+
+        assert result["circuit_name"] == "Half Adder"
+        assert result["hint"] == "You have created a Half Adder circuit."
+        assert result["source"] == "rule-based"
+
+    def test_identify_half_adder_from_gate_structure(self):
+        result = generate_hint({
+            "request_type": "identify",
+            "problem_title": "",
+            "inputs": ["A", "B"],
+            "outputs": ["S", "C"],
+            "gates": [
+                {"id": 1, "type": "INPUT", "label": "A"},
+                {"id": 2, "type": "INPUT", "label": "B"},
+                {"id": 3, "type": "XOR", "label": "XOR1"},
+                {"id": 4, "type": "AND", "label": "AND1"},
+                {"id": 5, "type": "OUTPUT", "label": "S"},
+                {"id": 6, "type": "OUTPUT", "label": "C"},
+            ],
+            "wires": [],
+        })
+
+        assert result["circuit_name"] == "Half Adder"
+
 
 # ── Integration ────────────────────────────────────────────────────────────────
 
