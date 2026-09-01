@@ -132,6 +132,7 @@ class ExportRequest(BaseModel):
         return v
 
 class HintRequest(BaseModel):
+    request_type: str = "hint"
     problem_title: str = ""
     problem_description: Optional[str] = ""
     inputs: list[str] = []
