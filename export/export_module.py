@@ -362,6 +362,22 @@ def generate_gate_json(circuit_name: str, components: list, connections: list) -
             "label":       component.upper(),
         })
 
+    input_gates  = [g for g in gates if g["type"] == "INPUT"]
+    output_gates = [g for g in gates if g["type"] == "OUTPUT"]
+    logic_gates  = [g for g in gates if g["type"] not in ("INPUT", "OUTPUT")]
+
+    for i, g in enumerate(input_gates):
+        g["x"] = 80
+        g["y"] = 80 + (i * 120)
+
+    for i, g in enumerate(logic_gates):
+        g["x"] = 350 + ((i // 3) * 200)
+        g["y"] = 80 + ((i % 3) * 120)
+
+    for i, g in enumerate(output_gates):
+        g["x"] = 620 + ((i // 3) * 200)
+        g["y"] = 80 + ((i % 3) * 120)
+
     wire_id = 0
     target_pin_indices = {}
     for conn in connections:
