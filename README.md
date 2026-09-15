@@ -72,8 +72,8 @@ CircuitMind/
 git clone https://github.com/QuantumLogicsLabs/CircuitMind.git
 cd CircuitMind
 
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python3 -m venv .venv
+source .venv/bin/activate
 
 pip install -r requirements.txt
 

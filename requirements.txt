@@ -1,6 +1,9 @@
 # CircuitMind — Production Dependencies
 # Install with: pip install -r requirements.txt
 
+python-dotenv>=1.0.0
+redis>=5.0.0
+
 # API framework
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
@@ -12,16 +15,10 @@ slowapi>=0.1.9
 
 # LLM
 groq>=0.4.0
-python-dotenv>=1.0.0
 
 # Circuit export
 schemdraw>=0.19
 
-# Web UI (optional — only needed for app_streamlit.py)
+# Web UI 
 streamlit>=1.35.0
 requests>=2.32.0
-
-# Computer Vision (optional — only needed for cv_module)
-# ultralytics>=8.2.0
-# opencv-python>=4.9.0
-# numpy>=1.26.0
