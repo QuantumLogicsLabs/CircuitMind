@@ -36,11 +36,16 @@ _SYSTEM_PROMPT = (
     "table. You will be given the problem, its truth table, the student's CURRENT "
     "circuit graph (gates + wires), and, if available, which rows their last "
     "submit attempt failed.\n\n"
-    "Reply with exactly ONE short hint (2-4 sentences, plain English) that nudges "
-    "the student toward the fix. Point at the kind of mistake or the next concept "
-    "to apply — do NOT give the full gate list, wiring diagram, or a complete "
-    "boolean expression that hands them the answer. Be specific to what you see "
-    "in their current circuit, not generic textbook text."
+    "The student may also ask what circuit they have created. When they ask for "
+    "the circuit name, identify the circuit from the problem information and the "
+    "current gate/wire structure. Give the circuit name directly and briefly "
+    "explain the evidence from the circuit. Do not invent a circuit name when the "
+    "available information is insufficient.\n\n"
+    "For normal hint requests, reply with exactly ONE short hint (2-4 sentences, "
+    "plain English) that nudges the student toward the fix. Point at the kind of "
+    "mistake or the next concept to apply — do NOT give the full gate list, wiring "
+    "diagram, or a complete boolean expression that hands them the answer. Be "
+    "specific to what you see in their current circuit, not generic textbook text."
 )
 
 
@@ -99,6 +104,46 @@ def _build_user_prompt(payload: dict) -> str:
 
     return "\n".join(p for p in parts if p)
 
+def _identify_circuit(payload: dict) -> str:
+    """Identify a common digital circuit from its problem data and gate graph."""
+    title = (payload.get("problem_title") or "").strip()
+    description = (payload.get("problem_description") or "").strip()
+    text = f"{title} {description}".lower()
+
+    known_circuits = {
+        "half adder": "Half Adder",
+        "full adder": "Full Adder",
+        "half subtractor": "Half Subtractor",
+        "full subtractor": "Full Subtractor",
+        "multiplexer": "Multiplexer",
+        "mux": "Multiplexer",
+        "demultiplexer": "Demultiplexer",
+        "demux": "Demultiplexer",
+        "decoder": "Decoder",
+        "encoder": "Encoder",
+        "comparator": "Comparator",
+    }
+
+    for keyword, circuit_name in known_circuits.items():
+        if keyword in text:
+            return circuit_name
+
+    gates = payload.get("gates", [])
+    gate_types = [str(g.get("type", "")).upper() for g in gates]
+
+    input_count = sum(gate_type == "INPUT" for gate_type in gate_types)
+    output_count = sum(gate_type == "OUTPUT" for gate_type in gate_types)
+
+    logic_types = [
+        gate_type for gate_type in gate_types
+        if gate_type not in {"INPUT", "OUTPUT", "BUFFER"}
+    ]
+
+    if input_count == 2 and output_count == 2:
+        if "XOR" in logic_types and "AND" in logic_types:
+            return "Half Adder"
+
+    return title or "Unknown circuit"
 
 def _hint_with_llm(payload: dict) -> str:
     if not GROQ_AVAILABLE:
@@ -167,15 +212,34 @@ def _hint_with_rules(payload: dict) -> str:
 def generate_hint(payload: dict) -> dict:
     """
     Main entry point.
-    Input:  dict with problem_title, problem_description, inputs, outputs,
-            truth_table, gates, wires, last_result (all optional).
-    Output: { "hint": str, "source": "llm" | "rule-based" } — never raises.
+
+    Supports:
+    - normal hint requests
+    - circuit identification requests
+
+    Output:
+    {
+        "hint": str,
+        "source": "llm" | "rule-based"
+    }
     """
+    if payload.get("request_type") == "identify":
+        circuit_name = _identify_circuit(payload)
+
+        if circuit_name != "Unknown circuit":
+            return {
+                "hint": f"You have created a {circuit_name} circuit.",
+                "source": "rule-based",
+                "circuit_name": circuit_name,
+            }
+
     try:
         hint_text = _hint_with_llm(payload)
         source = "llm"
     except Exception as e:
-        logger.warning(f"LLM hint unavailable ({e}), falling back to rule-based hint")
+        logger.warning(
+            f"LLM hint unavailable ({e}), falling back to rule-based hint"
+        )
         hint_text = _hint_with_rules(payload)
         source = "rule-based"
 
