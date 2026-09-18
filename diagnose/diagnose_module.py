@@ -122,14 +122,28 @@ def check_short_circuit(connections: list) -> list:
 
 
 def check_floating_components(components: list, connections: list) -> list:
-    warnings     = []
-    all_conn_text = " ".join(connections).lower()
+    warnings = []
+    
+    # Build a set of all nodes that appear in connections
+    connected_nodes = set()
+    for path in _parse_connections(connections):
+        for node in path:
+            connected_nodes.add(_normalize(node))
+    
     for comp in components:
-        if comp in POWER_SOURCES:
+        normalized = _normalize(comp)
+        if normalized in POWER_SOURCES:
             continue
-        if _normalize(comp) in GROUND_KEYWORDS or "ground" in comp.lower() or "gnd" in comp.lower():
+        if normalized in GROUND_KEYWORDS or "ground" in normalized or "gnd" in normalized:
             continue
-        if comp not in all_conn_text and comp.replace("_", " ") not in all_conn_text:
+        
+        # Check if this component appears in ANY connection node
+        is_connected = any(
+            normalized == node or normalized in node or node in normalized
+            for node in connected_nodes
+        )
+        
+        if not is_connected:
             warnings.append(
                 f"Warning: '{comp}' is not found in any connection. "
                 "It may be floating (disconnected)."
