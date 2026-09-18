@@ -186,36 +186,50 @@ def check_ground_present(components: list, connections: list) -> str | None:
 
 # ── Main Entry Point ───────────────────────────────────────────────────────────
 
-def diagnose_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
-    """
-    Input:  circuit JSON with 'circuit_name', 'components', and 'connections' lists
-    Output: { "circuit_name": str, "issues": [...], "passed": bool }
-    """
-    circuit_name = circuit_json.get("circuit_name", "")
-    components   = [_fuzzy_match(_normalize(c)) for c in circuit_json.get("components", [])]
-    connections  = circuit_json.get("connections", [])
+def diagnose_circuit(circuit: dict) -> dict:
+    circuit_name = circuit.get("circuit_name", "Unnamed Circuit")
+    components = circuit.get("components", [])
+    connections = circuit.get("connections", [])
 
-    issues: list[str] = []
+    issues = []
 
-    # Run all checks
-    if (err := check_power_source(components)):
-        issues.append(err)
-    if (err := check_empty_connections(connections)):
-        issues.append(err)
+    # 1. Check for Power Source
+    normalized_comps = [_normalize(c) for c in components]
+    has_power = any(c in POWER_SOURCES for c in normalized_comps)
+    if not has_power:
+        issues.append({
+            "severity": "error",
+            "code": "NO_POWER_SOURCE",
+            "message": "No power source found. Add a battery or power supply.",
+            "suggestion": "Add a 'battery' or 'power_supply' component to the circuit."
+        })
 
-    issues.extend(check_current_limiting(components))
-    issues.extend(check_short_circuit(connections))
-    issues.extend(check_floating_components(components, connections))
+    # 2. Check for Floating Components
+    floating_warnings = check_floating_components(components, connections)
+    for warning_msg in floating_warnings:
+        issues.append({
+            "severity": "warning",
+            "code": "FLOATING_COMPONENT",
+            "message": warning_msg,
+            "suggestion": "Ensure all terminals of this component are properly connected in the circuit paths."
+        })
 
-    if (warn := check_capacitor_polarity(components, connections)):
-        issues.append(warn)
-    if (warn := check_ground_present(components, connections)):
-        issues.append(warn)
+    # Backward compatibility: extract plain text strings for legacy frontends
+    legacy_issues = [f"{i['severity'].capitalize()}: {i['message']}" for i in issues]
 
-    passed = not any(msg.startswith(("Error", "Warning")) for msg in issues)
+    # Calculate summary counts
+    error_count = sum(1 for i in issues if i["severity"] == "error")
+    warning_count = sum(1 for i in issues if i["severity"] == "warning")
+    info_count = sum(1 for i in issues if i["severity"] == "info")
 
     return {
         "circuit_name": circuit_name,
-        "passed": passed,
+        "passed": error_count == 0,
         "issues": issues,
+        "legacy_issues": legacy_issues,
+        "summary": {
+            "errors": error_count,
+            "warnings": warning_count,
+            "info": info_count,
+        }
     }
