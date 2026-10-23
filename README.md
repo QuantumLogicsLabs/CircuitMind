@@ -176,4 +176,27 @@ CircuitMind is **proprietary software** — see [`LICENSE`](LICENSE) for the ful
 
 ---
 
+
+##  ALU Logic Unit
+
+The Logic Unit is one half of the ALU. It takes two N-bit inputs `A` and `B` (4-bit by default) and applies one bitwise operation chosen by the select lines `S1 S0`:
+
+| S1 S0 | Operation | Output per bit |
+|---|---|---|
+| 0 0 | AND | A · B |
+| 0 1 | OR | A + B |
+| 1 0 | XOR | A ⊕ B |
+| 1 1 | NOT A | ¬A |
+
+Code lives in [`alu/logic_unit.py`](alu/logic_unit.py):
+
+- `logic_unit(a, b, op, width)`: behavioral reference model
+- `build_logic_unit_graph(width)`: gate-level design (2-to-4 decoder + one AND/OR/XOR/NOT slice and 4:1 mux per bit)
+- `simulate_graph(graph, inputs)`: small simulator to verify the gate design
+- `to_gate_json(graph)`: converts the design to the repo's `gate_json` format for the logic-gate front end
+
+```bash
+python -m pytest tests/test_logic_unit.py -v
+```
+
 *CircuitMind — a practical circuit assistant, not a research model.*
