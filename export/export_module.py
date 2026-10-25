@@ -443,11 +443,29 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
             "svg_markup":   svg_markup,
         }
 
+
     # gate_json
-    gate_data = generate_gate_json(name, components, connections)
+    provided_gate_json = data.get("gate_json")
+
+    # Reuse prebuilt gate JSON when available (e.g. ALU).
+    if (
+        isinstance(provided_gate_json, dict)
+        and (
+            isinstance(provided_gate_json.get("gates"), list)
+            or any(
+                isinstance(section, dict)
+                and isinstance(section.get("gates"), list)
+                for section in provided_gate_json.values()
+            )
+        )
+    ):
+        gate_data = provided_gate_json
+    else:
+        gate_data = generate_gate_json(name, components, connections)
+
     return {
-        "status":       "success",
-        "format":       "gate_json",
+        "status": "success",
+        "format": "gate_json",
         "circuit_name": name,
-        "gate_json":    gate_data,
+        "gate_json": gate_data,
     }

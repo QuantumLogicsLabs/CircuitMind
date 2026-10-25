@@ -9,7 +9,8 @@ Strategy: LLM (Groq) first → rule-based fallback if LLM is unavailable.
 import json
 import os
 import logging
-
+from alu.logic_unit import build_logic_unit_graph, to_gate_json
+from alu.arithmetic_unit import build_arithmetic_unit_graph
 logger = logging.getLogger(__name__)
 
 try:
@@ -149,23 +150,82 @@ def generate_with_llm(prompt: str) -> dict:
     result["source"] = "llm"
     return result
 
+def generate_alu_circuit(prompt: str) -> dict:
+    """Generate an ALU response while preserving the existing API schema."""
+    p = prompt.lower()
 
+    width = 4
+    if "8-bit" in p or "8 bit" in p:
+        width = 8
+
+    is_logic = any(word in p for word in ("logic unit", "logical alu", "bitwise"))
+    is_arithmetic = any(
+        word in p for word in ("arithmetic unit", "adder-subtractor", "adder subtractor")
+    )
+
+    if is_logic:
+        graph = build_logic_unit_graph(width)
+        gate_json = to_gate_json(graph)
+        circuit_name = f"{width}-bit ALU Logic Unit"
+        description = "A logic unit supporting AND, OR, XOR, and NOT operations."
+    elif is_arithmetic:
+        graph = build_arithmetic_unit_graph(width)
+        gate_json = to_gate_json(graph)
+        circuit_name = f"{width}-bit ALU Arithmetic Unit"
+        description = "An arithmetic unit supporting addition and subtraction."
+    else:
+        logic_graph = build_logic_unit_graph(width)
+        arithmetic_graph = build_arithmetic_unit_graph(width)
+        gate_json = {
+            "logic_unit": to_gate_json(logic_graph),
+            "arithmetic_unit": to_gate_json(arithmetic_graph),
+        }
+        graph = {
+            "logic_unit": logic_graph,
+            "arithmetic_unit": arithmetic_graph,
+        }
+        circuit_name = f"{width}-bit ALU"
+        description = (
+            "An arithmetic logic unit with separate logic and arithmetic gate graphs."
+        )
+
+    return {
+        "circuit_name": circuit_name,
+        "components": ["ALU", "logic_unit", "arithmetic_unit"],
+        "connections": [],
+        "confidence": "high",
+        "description": description,
+        "source": "alu",
+        "gate_graph": graph,
+        "gate_json": gate_json,
+    }
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def generate_circuit(user_prompt: str) -> dict:
     """
     Main entry point.
-    Input:  user text e.g. 'make me a LED circuit'
-    Output: circuit JSON dict — never raises, always returns.
+    Input: user text, e.g. 'make me an LED circuit'.
+    Output: circuit JSON dict.
     """
     try:
         clean_prompt = validate_input(user_prompt)
     except ValueError as e:
-        return {"error": str(e), "error_code": "INVALID_INPUT", "components": [], "connections": []}
+        return {
+            "error": str(e),
+            "error_code": "INVALID_INPUT",
+            "components": [],
+            "connections": [],
+        }
+
+    p = clean_prompt.lower()
+    if "alu" in p or "arithmetic logic unit" in p:
+        return generate_alu_circuit(clean_prompt)
 
     try:
         logger.info("Attempting LLM generation via Groq")
         return generate_with_llm(clean_prompt)
     except Exception as e:
-        logger.warning(f"LLM unavailable ({e}), falling back to rule-based generation")
+        logger.warning(
+            f"LLM unavailable ({e}), falling back to rule-based generation"
+        )
         return generate_with_rules(clean_prompt)
