@@ -1,0 +1,4 @@
+[submodule "website"]
+    path = website
+    url = https://github.com/QuantumLogicsLabs/CircuitMind-Website.git
+    branch = main
