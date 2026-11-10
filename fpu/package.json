@@ -1,0 +1,15 @@
+{
+  "name": "circuitmind-fpu",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Integrated 32-bit IEEE-754 FPU (Verilog-2001) with self-checking simulation",
+  "scripts": {
+    "vectors": "python scripts/gen_vectors.py",
+    "test": "node scripts/run_sim.mjs",
+    "sim": "node scripts/run_sim.mjs"
+  },
+  "devDependencies": {
+    "@veriflow/iverilog-wasm": "^0.1.4"
+  }
+}
