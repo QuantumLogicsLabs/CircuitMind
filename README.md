@@ -50,6 +50,7 @@ CircuitMind/
 ├── utils/component_resolver.py # Shared component knowledge base + name normalization
 ├── app_streamlit.py            # Streamlit UI (Generate / Explain / Diagnose / Export / Chatbot tabs)
 ├── cv_module/                  # Experimental, NOT wired into the API — see note below
+├── fpu/                        # 32-bit IEEE-754 FPU (Verilog-2001, standalone)
 ├── website/                    # Git submodule (separate repo, deployed independently on Vercel)
 ├── tests/test_all_modules.py   # pytest suite covering all four modules
 ├── Dockerfile                  # Builds the API and Streamlit containers
@@ -58,6 +59,59 @@ CircuitMind/
 ├── vercel.json                 # Deploys api/app.py as a Vercel Python function
 └── .env.example
 ```
+
+---
+
+## 🔧 FPU (32-bit IEEE-754)
+
+`fpu/` contains a combinational, single-cycle floating-point unit written in Verilog-2001. It is a standalone hardware module and is independent of the Python circuit assistant.
+
+**Scope**
+
+- `fp_add` implements IEEE-754 binary32 addition and subtraction, including subnormals, round-to-nearest-even, and the `invalid` / `overflow` / `underflow` / `inexact` flags.
+- `fpu_top` decodes a 2-bit opcode: `00` add, `01` subtract, `10` multiply, `11` divide. Multiply and divide are currently flagged stubs (`stub_active = 1`) that return the canonical qNaN `0x7FC00000`.
+
+**Datapath**
+
+1. Unpack the operands and compare magnitudes using the effective exponent (`1` for subnormals).
+2. Align the smaller significand and keep guard, round, and sticky bits.
+3. Add or subtract the significands; subtraction compensates for the truncated sticky bit.
+4. Normalize (carry, leading-zero shift, subnormal clamp) and round to nearest-even.
+5. Assemble the result and exception flags.
+
+**Modules**
+
+| File | Role |
+|---|---|
+| `fpu/rtl/fp_add.v` | Add/sub wrapper: special cases, operand swap, flag mux |
+| `fpu/rtl/fp_compare_mag.v` | Effective-exponent and magnitude comparison |
+| `fpu/rtl/fp_align.v` | Significand alignment with guard/round/sticky |
+| `fpu/rtl/fp_addsub_core.v` | 28-bit significand add/subtract |
+| `fpu/rtl/fp_normalize.v` | Normalization and round-to-nearest-even |
+| `fpu/rtl/fpu_control.v` | Opcode decode |
+| `fpu/rtl/fpu_top.v` | Integrated top: add/sub plus mul/div sockets |
+| `fpu/rtl/stubs/fp_mul_stub.v`, `fpu/rtl/stubs/fp_div_stub.v` | Placeholders for the arithmetic modules |
+
+See [`fpu/README.md`](fpu/README.md) for the port list, the stub contract, and verification details.
+
+**Running the tests**
+
+The testbenches run on the WASM build of Icarus Verilog, so no native Verilog install is needed. Node.js 24+ is required:
+
+```bash
+cd fpu
+npm ci
+npm test
+```
+
+The suites read the committed vectors in `fpu/vectors/` and compare both the result bits and the four IEEE exception flags.
+
+**Integration notes**
+
+- `fpu_top` is purely combinational: no clock, reset, or internal state.
+- Flags are valid for every operation; stub operations return qNaN with all flags deasserted and `stub_active` high.
+- Special cases follow IEEE-754: canonical qNaN output, signaling-NaN and `Inf - Inf` invalid, signed-zero rules, and overflow/underflow reporting.
+- The FPU is not wired into the Python API or the circuit export formats; it is a self-contained HDL unit.
 
 ---
 
@@ -155,6 +209,8 @@ pytest tests/
 ```
 Covers all four modules individually (`TestGenerate`, `TestExplain`, `TestDiagnose`, `TestExport`) plus end-to-end integration cases (generate → explain, generate → diagnose, generate → export).
 
+The FPU has its own self-checking simulation suite: `cd fpu && npm ci && npm test`.
+
 ---
 
 ## ⚠️ Known Limitations
@@ -163,6 +219,7 @@ Covers all four modules individually (`TestGenerate`, `TestExplain`, `TestDiagno
 - The component knowledge base (`utils/component_resolver.py`) covers ~30 common component types; anything outside it is treated as "unknown" by Explain/Diagnose.
 - **`cv_module/`** (image → circuit JSON via YOLO object detection) is an unfinished, standalone experiment. It requires manually downloading trained YOLO weights, has its own `requirements_cv.txt` (`torch`, `ultralytics`, `opencv-python`), and is **not imported or exposed by `api/app.py`**.
 - Rate limiting defaults to in-memory storage, which only holds correctly within a single running process — set `RATE_LIMIT_REDIS_URL` for multi-instance/serverless deployments.
+- The FPU (`fpu/`) is verified in simulation only — there is no synthesis or timing sign-off yet — and its multiply/divide paths are stubs until the arithmetic modules land.
 
 ```json
 {
