@@ -1,0 +1,54 @@
+name: FPU CI
+
+on:
+  pull_request:
+    paths:
+      - 'fpu/**'
+      - '.github/workflows/fpu-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'fpu/**'
+      - '.github/workflows/fpu-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fpu-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    name: Icarus (WASM) simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check FPU sources are present
+        id: sources
+        run: |
+          if [ -f fpu/package.json ] && [ -f fpu/package-lock.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::FPU sources are not present in this branch yet; skipping simulation."
+          fi
+
+      - name: Install dependencies
+        if: steps.sources.outputs.present == 'true'
+        working-directory: fpu
+        run: npm ci
+
+      - name: Run self-checking suites
+        if: steps.sources.outputs.present == 'true'
+        working-directory: fpu
+        run: npm test
