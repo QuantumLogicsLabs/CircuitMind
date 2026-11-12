@@ -114,18 +114,24 @@ VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
+def _component_key(component: str) -> str:
+    """Normalise a component name for map lookups ("DC Motor" -> "dc_motor")."""
+    return str(component).strip().lower().replace(" ", "_").replace("-", "_")
+
+
 def generate_spice(circuit_name: str, components: list) -> str:
     lines    = [circuit_name]
     counters: dict = {}
-    
-    comps = [c for c in components if c.lower() not in ("ground", "gnd")]
-    
+
+    comps = [c for c in components if _component_key(c) not in ("ground", "gnd")]
+
     # Track defined subcircuits by subcircuit name: value -> (node1, node2)
     defined_subckts = {}
-    
+
     for i, component in enumerate(comps):
-        symbol = COMPONENT_MAP.get(component, "X")
-        value  = COMPONENT_VALUES.get(component, "?")
+        key    = _component_key(component)
+        symbol = COMPONENT_MAP.get(key, "X")
+        value  = COMPONENT_VALUES.get(key, "?")
         counters[symbol] = counters.get(symbol, 0) + 1
         name = f"{symbol}{counters[symbol]}"
         
