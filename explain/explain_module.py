@@ -95,8 +95,13 @@ def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
                 "description": "component not in knowledge base",
             })
 
+    flow_description = _parse_flow(connections) if connections else ""
+
     if not components:
-        explanation = "No components provided. Cannot generate an explanation."
+        # Connections without components still describe something: report
+        # the flow instead of claiming no explanation can be generated.
+        explanation = "No components provided. "
+        explanation += flow_description or "Cannot generate an explanation."
     else:
         parts = []
         for detail in component_details:
@@ -109,10 +114,8 @@ def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
         else:
             explanation = "This circuit uses " + ", ".join(parts[:-1]) + ", and " + parts[-1] + "."
 
-    flow_description = _parse_flow(connections) if connections else ""
-
-    if flow_description:
-        explanation = explanation.rstrip(".") + ". " + flow_description
+        if flow_description:
+            explanation = explanation.rstrip(".") + ". " + flow_description
 
     return {
         "explanation":       explanation,
