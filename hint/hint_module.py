@@ -104,8 +104,12 @@ def _build_user_prompt(payload: dict) -> str:
 
     return "\n".join(p for p in parts if p)
 
-def _identify_circuit(payload: dict) -> str:
-    """Identify a common digital circuit from its problem data and gate graph."""
+def _identify_circuit(payload: dict) -> str | None:
+    """
+    Identify a common digital circuit from its problem data and gate graph.
+    Returns None when the evidence is not specific enough to name one — the
+    problem title alone says nothing about the circuit.
+    """
     title = (payload.get("problem_title") or "").strip()
     description = (payload.get("problem_description") or "").strip()
     text = f"{title} {description}".lower()
@@ -124,9 +128,17 @@ def _identify_circuit(payload: dict) -> str:
         "comparator": "Comparator",
     }
 
+    # "demux" contains "mux" and "demultiplexer" contains "multiplexer", so
+    # first-match order named demux problems as multiplexers. Keep the longest
+    # matching keyword instead; ties keep declaration order.
+    best_keyword = ""
+    best_name = None
     for keyword, circuit_name in known_circuits.items():
-        if keyword in text:
-            return circuit_name
+        if keyword in text and len(keyword) > len(best_keyword):
+            best_keyword = keyword
+            best_name = circuit_name
+    if best_name:
+        return best_name
 
     gates = payload.get("gates", [])
     gate_types = [str(g.get("type", "")).upper() for g in gates]
@@ -143,7 +155,7 @@ def _identify_circuit(payload: dict) -> str:
         if "XOR" in logic_types and "AND" in logic_types:
             return "Half Adder"
 
-    return title or "Unknown circuit"
+    return None
 
 def _hint_with_llm(payload: dict) -> str:
     if not GROQ_AVAILABLE:
@@ -226,12 +238,14 @@ def generate_hint(payload: dict) -> dict:
     if payload.get("request_type") == "identify":
         circuit_name = _identify_circuit(payload)
 
-        if circuit_name != "Unknown circuit":
+        if circuit_name:
             return {
                 "hint": f"You have created a {circuit_name} circuit.",
                 "source": "rule-based",
                 "circuit_name": circuit_name,
             }
+        # Not identifiable from the rule set — let the LLM try before claiming
+        # anything about the student's circuit.
 
     try:
         hint_text = _hint_with_llm(payload)
@@ -240,6 +254,15 @@ def generate_hint(payload: dict) -> dict:
         logger.warning(
             f"LLM hint unavailable ({e}), falling back to rule-based hint"
         )
+        if payload.get("request_type") == "identify":
+            return {
+                "hint": (
+                    "I can't confidently identify this circuit from the information "
+                    "provided. Add the problem title or description, or connect more "
+                    "gates, then ask again."
+                ),
+                "source": "rule-based",
+            }
         hint_text = _hint_with_rules(payload)
         source = "rule-based"
 
