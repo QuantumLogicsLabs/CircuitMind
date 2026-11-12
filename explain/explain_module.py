@@ -7,6 +7,7 @@ component details, current flow description, and any warnings.
 """
 
 from typing import Any
+import re
 
 from utils.component_resolver import (
     COMPONENT_DB,
@@ -23,15 +24,22 @@ LED_OUTPUTS    = {"led"}
 MOTOR_OUTPUTS  = {"motor", "dc_motor"}
 BUZZER_OUTPUTS = {"buzzer"}
 
+# Exported circuits use a unicode arrow, hand-written ones usually use "->".
+_ARROW_SEPARATOR = re.compile(r"\s*(?:->|→|--|—|–)\s*")
+_TERMINAL_SUFFIX = re.compile(r"[^a-z0-9_]+$")
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+
+def _split_connection(conn: str) -> list[str]:
+    return [node.strip() for node in _ARROW_SEPARATOR.split(conn) if node.strip()]
 
 
 def _parse_flow(connections: list[str]) -> str:
     parts = []
     for conn in connections:
-        sep = "->" if "->" in conn else "--"
-        nodes = [n.strip() for n in conn.split(sep)]
+        nodes = _split_connection(conn)
         
         if len(nodes) == 1:
             parts.append(f"The {nodes[0]} stands alone with no connections.")
@@ -39,8 +47,9 @@ def _parse_flow(connections: list[str]) -> str:
             arrow_chain = " → ".join(nodes)
             parts.append(f"Current flows from the {arrow_chain}.")
 
-            # Add effect note
-            last = _normalize(nodes[-1]) if nodes else ""
+            # Terminal markers ("led+", "cap-terminal") must not hide the effect.
+            last = _TERMINAL_SUFFIX.sub("", _normalize(nodes[-1]))
+            last = _fuzzy_match(last) if last else ""
             if last in LED_OUTPUTS:
                 parts[-1] += " This causes the LED to emit light."
             elif last in MOTOR_OUTPUTS:
