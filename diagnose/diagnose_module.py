@@ -7,6 +7,7 @@ and returns a structured result with warnings and errors.
 """
 
 from typing import Any
+import re
 
 from utils.component_resolver import (
     POWER_SOURCES,
@@ -25,6 +26,9 @@ POSITIVE_KEYWORDS   = {"+", "pos", "positive", "anode", "vcc", "v+", "plus"}
 GROUND_KEYWORDS     = {"ground", "gnd", "0v", "v-", "negative", "common"}
 WIRE_LABELS         = {"wire", "node", "net", "junction", "point", "trace"}
 
+# Exported circuits use a unicode arrow, hand-written ones usually use "->".
+_ARROW_SEPARATOR = re.compile(r"\s*(?:->|→|--|—|–)\s*")
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -32,12 +36,7 @@ WIRE_LABELS         = {"wire", "node", "net", "junction", "point", "trace"}
 def _parse_connections(connections: list) -> list:
     parsed = []
     for conn in connections:
-        if "->" in conn:
-            nodes = [n.strip().lower() for n in conn.split("->")]
-        elif "--" in conn:
-            nodes = [n.strip().lower() for n in conn.split("--")]
-        else:
-            nodes = [conn.strip().lower()]
+        nodes = [n.strip().lower() for n in _ARROW_SEPARATOR.split(conn) if n.strip()]
         parsed.append(nodes)
     return parsed
 
@@ -167,13 +166,17 @@ def check_capacitor_polarity(components: list, connections: list) -> str | None:
             if "capacitor" not in n:
                 continue
 
-            if any(keyword in n for keyword in POSITIVE_KEYWORDS):
+            # Terminal markers must be read before normalization: it turns
+            # "capacitor-" into "capacitor_", hiding the negative terminal.
+            raw = node.lower()
+
+            if any(keyword in raw for keyword in POSITIVE_KEYWORDS):
                 capacitor_polarity["positive"] = True
 
             if (
-                "-" in n
-                or "negative" in n
-                or "neg" in n
+                "-" in raw
+                or "negative" in raw
+                or "neg" in raw
             ):
                 capacitor_polarity["negative"] = True
 
