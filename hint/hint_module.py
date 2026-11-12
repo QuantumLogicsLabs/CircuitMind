@@ -115,7 +115,9 @@ def _summarize_circuit(gates: list, wires: list) -> str:
         from_g = next((g for g in gates if g.get("id") == w.get("fromId")), None)
         to_g = next((g for g in gates if g.get("id") == w.get("toId")), None)
         if from_g and to_g:
-            wire_lines.append(f"- {from_g.get('label')} -> {to_g.get('label')}")
+            from_name = from_g.get("label") or f"gate{from_g.get('id')}"
+            to_name = to_g.get("label") or f"gate{to_g.get('id')}"
+            wire_lines.append(f"- {from_name} -> {to_name}")
 
     return (
         "Gates:\n" + "\n".join(gate_lines)

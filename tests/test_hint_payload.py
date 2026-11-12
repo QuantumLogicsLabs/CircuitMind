@@ -7,7 +7,12 @@ fields (None, bare strings, ints, non-dict rows) must not raise.
 import pytest
 
 from hint import hint_module
-from hint.hint_module import generate_hint, _hint_with_rules, _sanitize_payload
+from hint.hint_module import (
+    generate_hint,
+    _hint_with_rules,
+    _sanitize_payload,
+    _summarize_circuit,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -126,3 +131,26 @@ class TestGenerateHintPayloads:
 
         assert "INPUT" in hint_text
         assert "0 INPUT" not in hint_text
+
+
+class TestSummarizeCircuit:
+
+    def test_wires_with_unlabelled_gates_use_fallbacks(self):
+        gates = [
+            {"id": 1, "type": "INPUT"},
+            {"id": 2, "type": "OUTPUT", "label": ""},
+        ]
+        wires = [{"fromId": 1, "toId": 2}]
+
+        summary = _summarize_circuit(gates, wires)
+
+        assert "- gate1 -> gate2" in summary
+        assert "None ->" not in summary
+
+    def test_wires_pointing_at_missing_gates_are_skipped(self):
+        gates = [{"id": 1, "type": "INPUT", "label": "A"}]
+        wires = [{"fromId": 1, "toId": 99}]
+
+        summary = _summarize_circuit(gates, wires)
+
+        assert "(none)" in summary
