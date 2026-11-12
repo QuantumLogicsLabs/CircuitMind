@@ -409,12 +409,24 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
     except json.JSONDecodeError as e:
         return {"status": "error", "message": f"Invalid JSON: {e}"}
 
+    if not isinstance(data, dict):
+        return {"status": "error", "message": "Circuit JSON must be an object."}
+
     if "components" not in data or "connections" not in data:
         return {"status": "error", "message": "Missing required fields: 'components' and 'connections'."}
 
     name        = data.get("circuit_name", "CircuitMind_Generated_Circuit")
     components  = data["components"]
     connections = data["connections"]
+
+    if not isinstance(components, list) or not all(isinstance(c, str) for c in components):
+        return {"status": "error", "message": "'components' must be a list of strings."}
+
+    if not isinstance(connections, list) or not all(isinstance(c, str) for c in connections):
+        return {"status": "error", "message": "'connections' must be a list of strings."}
+
+    if not isinstance(name, str) or not name.strip():
+        name = "CircuitMind_Generated_Circuit"
 
     logger.info(f"Exporting '{name}' as {export_format}")
 
