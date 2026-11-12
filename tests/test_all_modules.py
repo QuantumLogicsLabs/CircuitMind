@@ -151,33 +151,57 @@ class TestExplain:
 # ── Diagnose ───────────────────────────────────────────────────────────────────
 
 class TestDiagnose:
+    def _messages(self, result):
+        return [i["message"] for i in result["issues"]]
+
+    def _codes(self, result):
+        return [i["code"] for i in result["issues"]]
+
     def test_valid_circuit_passes(self):
         result = diagnose_circuit(LED_CIRCUIT)
         assert result["passed"] is True
         assert len(result["issues"]) == 1
-        assert "Info:" in result["issues"][0]
+        assert result["issues"][0]["code"] == "NO_GROUND"
+        assert result["issues"][0]["severity"] == "info"
+
+    def test_issues_are_structured(self):
+        result = diagnose_circuit(BAD_CIRCUIT)
+        assert result["issues"]
+        for issue in result["issues"]:
+            assert {"severity", "code", "message", "suggestion"} <= issue.keys()
 
     def test_missing_resistor_flagged(self):
         result = diagnose_circuit(BAD_CIRCUIT)
         assert result["passed"] is False
-        assert any("current-limiting" in i for i in result["issues"])
+        assert "MISSING_CURRENT_LIMITER" in self._codes(result)
+        assert any("current-limiting" in m for m in self._messages(result))
 
     def test_short_circuit_detected(self):
         result = diagnose_circuit(SHORT_CIRCUIT)
         assert result["passed"] is False
-        assert any("short circuit" in i.lower() for i in result["issues"])
+        assert "SHORT_CIRCUIT" in self._codes(result)
+        assert any("short circuit" in m.lower() for m in self._messages(result))
 
     def test_no_power_source_flagged(self):
         no_power = {"components": ["resistor", "led"], "connections": ["resistor -> led"]}
         result = diagnose_circuit(no_power)
-        assert any("power source" in i.lower() for i in result["issues"])
+        assert "NO_POWER_SOURCE" in self._codes(result)
+
+    def test_no_connections_flagged(self):
+        result = diagnose_circuit({"components": ["battery"], "connections": []})
+        assert "NO_CONNECTIONS" in self._codes(result)
 
     def test_result_always_has_passed_and_issues(self):
         result = diagnose_circuit(LED_CIRCUIT)
         assert "passed" in result
         assert "issues" in result
         assert isinstance(result["issues"], list)
-    
+
+    def test_legacy_issues_stay_strings(self):
+        result = diagnose_circuit(BAD_CIRCUIT)
+        assert result["legacy_issues"]
+        assert all(isinstance(i, str) for i in result["legacy_issues"])
+
     def test_switch_short_detected(self):
         circuit = {
           "components": ["battery", "switch", "ground"],
@@ -186,7 +210,7 @@ class TestDiagnose:
 
         result = diagnose_circuit(circuit)
 
-        assert any("short circuit" in i.lower() for i in result["issues"])
+        assert "SHORT_CIRCUIT" in self._codes(result)
 
     def test_capacitor_without_polarity_warning(self):
         circuit = {
@@ -199,7 +223,7 @@ class TestDiagnose:
 
         result = diagnose_circuit(circuit)
 
-        assert any("polarity" in i.lower() for i in result["issues"])
+        assert "CAPACITOR_POLARITY" in self._codes(result)
 
 
     def test_led_polarity_does_not_count_for_capacitor(self):
@@ -214,7 +238,7 @@ class TestDiagnose:
 
         result = diagnose_circuit(circuit)
 
-        assert any("polarity" in i.lower() for i in result["issues"])
+        assert "CAPACITOR_POLARITY" in self._codes(result)
 
 
 # ── Export ─────────────────────────────────────────────────────────────────────
@@ -239,8 +263,8 @@ class TestExport:
         assert result["status"] == "success"
         netlist = result["spice_netlist"]
         assert "X1 2 3 CC" in netlist
-        assert ".subckt CC 2 3" in netlist
-        assert "Rdummy 2 3 10Meg" in netlist
+        assert ".subckt CC IN OUT" in netlist
+        assert "Rdummy IN OUT 10Meg" in netlist
         assert ".ends CC" in netlist
         assert ".end" in netlist
 

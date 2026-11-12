@@ -10,6 +10,7 @@ Converts circuit JSON into:
 
 import json
 import logging
+import re
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 
@@ -18,15 +19,12 @@ logger = logging.getLogger(__name__)
 # ── Component maps ─────────────────────────────────────────────────────────────
 
 COMPONENT_MAP = {
-    # ── Existing entries (unchanged) ──────────────────────────────────────────
+    # Two-terminal primitives that SPICE can express directly.
     "battery":       "V",
     "resistor":      "R",
     "led":           "D",
     "capacitor":     "C",
-    "switch":        "S",
-    "motor":         "M",
     "inductor":      "L",
-    "transistor":    "Q",
     # ── Added: power sources ──────────────────────────────────────────────────
     "power_supply":  "V",  # voltage source, same symbol as battery
     "solar_cell":    "V",  # modelled as a voltage source in SPICE
@@ -34,17 +32,23 @@ COMPONENT_MAP = {
     "diode":         "D",  # standard signal diode
     "zener_diode":   "D",  # 5.1 V zener
     "photodiode":    "D",  # common photodiode
-    # ── Added: transistors / FETs ─────────────────────────────────────────────
-    "npn_transistor": "Q", # same as generic transistor
-    "pnp_transistor": "Q", # common PNP
-    "mosfet":        "M",  # MOSFET symbol is M in SPICE
     # ── Added: passive ────────────────────────────────────────────────────────
     "potentiometer": "R",  # variable resistor → resistor symbol
     "thermistor":    "R",  # modelled as resistor
     "ldr":           "R",  # modelled as resistor
     "fuse":          "R",  # modelled as a tiny resistor in SPICE
-    # ── Added: output / actuators ─────────────────────────────────────────────
-    "dc_motor":      "M",  # same as motor
+    # ── Subcircuits ───────────────────────────────────────────────────────────
+    # S (switch), Q (BJT) and M (MOSFET) elements need four nodes and a model
+    # card, which a two-terminal circuit node cannot provide. Emit them as
+    # subcircuit calls so the netlist stays syntactically valid.
+    "switch":        "X",
+    "button":        "X",
+    "transistor":    "X",
+    "npn_transistor": "X",
+    "pnp_transistor": "X",
+    "mosfet":        "X",
+    "motor":         "X",
+    "dc_motor":      "X",
     "buzzer":        "X",  # no native SPICE symbol; use subcircuit
     "speaker":       "X",  # same as buzzer
     "relay":         "X",  # subcircuit, no native element
@@ -55,7 +59,6 @@ COMPONENT_MAP = {
     "microcontroller":   "X",  # subcircuit
     "charge_controller": "X",  # subcircuit
     # ── Added: sensors / input ────────────────────────────────────────────────
-    "button":        "S",  # same as switch
     "sensor":        "X",  # generic subcircuit
     # ── Added: display / misc ─────────────────────────────────────────────────
     "display":       "X",  # subcircuit
@@ -114,14 +117,25 @@ VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
+_SUBCKT_NAME_RE = re.compile(r"[^A-Za-z0-9_]")
+
+
+def _spice_subckt_name(value: str) -> str:
+    """Turn a component value into a legal SPICE identifier."""
+    name = _SUBCKT_NAME_RE.sub("_", value).strip("_") or "SUBCKT"
+    if not name[0].isalpha():
+        name = f"X_{name}"
+    return name
+
+
 def generate_spice(circuit_name: str, components: list) -> str:
     lines    = [circuit_name]
     counters: dict = {}
     
     comps = [c for c in components if c.lower() not in ("ground", "gnd")]
     
-    # Track defined subcircuits by subcircuit name: value -> (node1, node2)
-    defined_subckts = {}
+    # One stub definition per subcircuit name, emitted after the elements.
+    defined_subckts = []
     
     for i, component in enumerate(comps):
         symbol = COMPONENT_MAP.get(component, "X")
@@ -135,16 +149,18 @@ def generate_spice(circuit_name: str, components: list) -> str:
             n1, n2 = i, 0
         else:
             n1, n2 = i, i + 1
-            
-        lines.append(f"{name} {n1} {n2} {value}")
-        
+
         if symbol == "X":
-            if value not in defined_subckts:
-                defined_subckts[value] = (n1, n2)
-                
-    for subckt_name, (node_a, node_b) in defined_subckts.items():
-        lines.append(f".subckt {subckt_name} {node_a} {node_b}")
-        lines.append(f"Rdummy {node_a} {node_b} 10Meg")
+            subckt_name = _spice_subckt_name(value)
+            lines.append(f"{name} {n1} {n2} {subckt_name}")
+            if subckt_name not in defined_subckts:
+                defined_subckts.append(subckt_name)
+        else:
+            lines.append(f"{name} {n1} {n2} {value}")
+
+    for subckt_name in defined_subckts:
+        lines.append(f".subckt {subckt_name} IN OUT")
+        lines.append(f"Rdummy IN OUT 10Meg")
         lines.append(f".ends {subckt_name}")
         
     lines.append(".end")
