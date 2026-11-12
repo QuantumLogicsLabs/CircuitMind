@@ -127,6 +127,21 @@ LOAD_COMPONENTS = {
 
 KNOWN_COMPONENTS = set(COMPONENT_DB.keys())
 
+# Roles that make up a pure digital-logic circuit: gates plus their I/O ports.
+LOGIC_ROLES = {"logic gate", "input signal", "output signal"}
+
+
+def is_logic_circuit(components: list) -> bool:
+    """True when every component is a logic gate or a logic I/O signal."""
+    if not components:
+        return False
+    resolved = [_fuzzy_match(_normalize(str(c))) for c in components]
+    return all(
+        name in COMPONENT_DB and COMPONENT_DB[name]["role"] in LOGIC_ROLES
+        for name in resolved
+    )
+
+
 def _normalize(name: str) -> str:
     return name.strip().lower().replace(" ", "_").replace("-", "_")
 

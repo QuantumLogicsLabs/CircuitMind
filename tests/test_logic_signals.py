@@ -14,9 +14,15 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from diagnose.diagnose_module import diagnose_circuit
 from explain.explain_module import explain_circuit
 from generate.generate import _RULES
-from utils.component_resolver import COMPONENT_DB, _fuzzy_match, _normalize
+from utils.component_resolver import (
+    COMPONENT_DB,
+    _fuzzy_match,
+    _normalize,
+    is_logic_circuit,
+)
 
 GENERATED_SIGNALS = [
     "cin", "cout", "sel", "bin", "input_din",
@@ -55,3 +61,71 @@ class TestExplainGeneratedCircuits:
 
             unknown = [w for w in result["warnings"] if "Unknown component" in w]
             assert not unknown, (name, unknown)
+
+    def test_logic_circuits_do_not_warn_about_power(self):
+        for keywords, name, components, connections, description in _RULES:
+            if not is_logic_circuit(components):
+                continue
+
+            result = explain_circuit({
+                "components":  components,
+                "connections": connections,
+            })
+
+            assert result["warnings"] == [], name
+
+    def test_analog_circuit_without_power_still_warns(self):
+        result = explain_circuit({
+            "components":  ["resistor", "led"],
+            "connections": ["resistor -> led"],
+        })
+
+        assert any("No power source" in w for w in result["warnings"])
+
+
+class TestLogicCircuitDetection:
+
+    def test_gates_and_signals_are_a_logic_circuit(self):
+        assert is_logic_circuit(["input_a", "xor1", "and2", "sum_output"])
+
+    def test_analog_circuit_is_not_a_logic_circuit(self):
+        assert not is_logic_circuit(["battery", "resistor", "led"])
+
+    def test_mixed_circuit_is_not_a_logic_circuit(self):
+        assert not is_logic_circuit(["xor", "resistor"])
+
+    def test_empty_circuit_is_not_a_logic_circuit(self):
+        assert not is_logic_circuit([])
+
+
+class TestDiagnoseGeneratedCircuits:
+
+    def test_logic_circuits_need_no_power_or_ground(self):
+        checked = 0
+        for keywords, name, components, connections, description in _RULES:
+            if not is_logic_circuit(components):
+                continue
+            checked += 1
+
+            result = diagnose_circuit({
+                "circuit_name": name,
+                "components":   components,
+                "connections":  connections,
+            })
+
+            codes = [issue["code"] for issue in result["issues"]]
+            assert "NO_POWER_SOURCE" not in codes, name
+            assert "NO_GROUND" not in codes, name
+            assert result["passed"] is True, (name, codes)
+
+        assert checked > 0
+
+    def test_analog_circuit_without_power_still_fails(self):
+        result = diagnose_circuit({
+            "components":  ["resistor", "led"],
+            "connections": ["resistor -> led"],
+        })
+
+        codes = [issue["code"] for issue in result["issues"]]
+        assert "NO_POWER_SOURCE" in codes
+

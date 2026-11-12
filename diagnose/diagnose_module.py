@@ -16,6 +16,7 @@ from utils.component_resolver import (
     KNOWN_COMPONENTS,
     _normalize,
     _fuzzy_match,
+    is_logic_circuit,
 )
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -45,6 +46,10 @@ def _parse_connections(connections: list) -> list:
 # ── Individual Checks ──────────────────────────────────────────────────────────
 
 def check_power_source(components: list) -> str | None:
+    # Logic gates are abstract in this app's model and are generated without a
+    # supply rail, so a pure logic circuit is self-contained.
+    if is_logic_circuit(components):
+        return None
     if not any(c in POWER_SOURCES for c in components):
         return "Error: No power source found. Add a battery or power supply."
     return None
@@ -190,6 +195,8 @@ def check_capacitor_polarity(components: list, connections: list) -> str | None:
 
 
 def check_ground_present(components: list, connections: list) -> str | None:
+    if is_logic_circuit(components):
+        return None
     all_text = " ".join(components + connections).lower()
     has_ground = any(kw in all_text for kw in GROUND_KEYWORDS)
     has_power  = any(c in POWER_SOURCES for c in components)

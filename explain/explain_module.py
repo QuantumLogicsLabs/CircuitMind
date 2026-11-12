@@ -15,6 +15,7 @@ from utils.component_resolver import (
     CURRENT_LIMITERS,
     _normalize,
     _fuzzy_match,
+    is_logic_circuit,
 )
 
 # ── Explain-specific constants ─────────────────────────────────────────────────
@@ -53,7 +54,7 @@ def _parse_flow(connections: list[str]) -> str:
 
 def _check_warnings(components: list[str], unknown: list[str]) -> list[str]:
     warnings = []
-    if not any(c in POWER_SOURCES for c in components):
+    if not is_logic_circuit(components) and not any(c in POWER_SOURCES for c in components):
         warnings.append("No power source detected. The circuit cannot operate without one.")
     has_limiter = any(c in CURRENT_LIMITERS for c in components)
     for comp in NEEDS_CURRENT_LIMIT:
