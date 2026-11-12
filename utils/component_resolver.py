@@ -6,6 +6,8 @@ Shared component definitions and helper functions used by
 both the Explain and Diagnose modules.
 """
 
+import re
+
 COMPONENT_DB: dict[str, dict] = {
     # Power
     "battery":       {"role": "power source",      "description": "provides electrical energy to the circuit"},
@@ -142,8 +144,13 @@ def is_logic_circuit(components: list) -> bool:
     )
 
 
+_SEPARATOR_RE = re.compile(r"[\s\-]+")
+
+
 def _normalize(name: str) -> str:
-    return name.strip().lower().replace(" ", "_").replace("-", "_")
+    # Collapse runs of separators so "DC--Motor" and "solar  panel" match
+    # their canonical keys instead of keeping doubled underscores.
+    return _SEPARATOR_RE.sub("_", str(name).strip().lower())
 
 
 # Expanded Alias Dictionary (Task B4)
