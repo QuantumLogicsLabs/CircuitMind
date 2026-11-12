@@ -219,10 +219,46 @@ def _make_issue(severity: str, code: str, message: str, suggestion: str) -> dict
     }
 
 
+def _invalid_result(message: str) -> dict:
+    """Return a well-formed empty diagnosis carrying a validation error."""
+    return {
+        "circuit_name":  "",
+        "passed":        False,
+        "issues":        [],
+        "legacy_issues": [],
+        "summary":       {"errors": 0, "warnings": 0, "info": 0},
+        "error":         message,
+    }
+
+
+def _as_string_list(value, field: str) -> tuple[list | None, str]:
+    """Return (list, "") when value is a list of strings, else (None, error)."""
+    if value is None:
+        return [], ""
+    if not isinstance(value, (list, tuple)):
+        return None, f"'{field}' must be a list of strings."
+    if not all(isinstance(item, str) for item in value):
+        return None, f"Every entry in '{field}' must be a string."
+    return list(value), ""
+
+
 def diagnose_circuit(circuit: dict) -> dict:
+    if not isinstance(circuit, dict):
+        return _invalid_result("circuit_json must be a JSON object.")
+
     circuit_name = circuit.get("circuit_name", "Unnamed Circuit")
-    components = [_fuzzy_match(_normalize(c)) for c in circuit.get("components", [])]
-    connections = circuit.get("connections", [])
+    if not isinstance(circuit_name, str):
+        circuit_name = str(circuit_name)
+
+    raw_components, error = _as_string_list(circuit.get("components"), "components")
+    if error:
+        return _invalid_result(error)
+
+    connections, error = _as_string_list(circuit.get("connections"), "connections")
+    if error:
+        return _invalid_result(error)
+
+    components = [_fuzzy_match(_normalize(c)) for c in raw_components]
 
     issues = []
 
