@@ -52,13 +52,20 @@ def check_power_source(components: list) -> str | None:
 
 def check_current_limiting(components: list) -> list:
     warnings = []
-    has_limiter = any(c in CURRENT_LIMITERS for c in components)
-    for comp in NEEDS_CURRENT_LIMIT:
-        if comp in components and not has_limiter:
-            warnings.append(
-                f"Warning: '{comp}' detected without a current-limiting component. "
-                "Add a resistor to prevent burnout."
-            )
+    if any(c in CURRENT_LIMITERS for c in components):
+        return warnings
+
+    # Walk the components in circuit order (not the set) so warnings are
+    # stable between runs, and report each offender only once.
+    seen: set = set()
+    for comp in components:
+        if comp not in NEEDS_CURRENT_LIMIT or comp in seen:
+            continue
+        seen.add(comp)
+        warnings.append(
+            f"Warning: '{comp}' detected without a current-limiting component. "
+            "Add a resistor to prevent burnout."
+        )
     return warnings
 
 
