@@ -128,9 +128,17 @@ def _identify_circuit(payload: dict) -> str | None:
         "comparator": "Comparator",
     }
 
+    # "demux" contains "mux" and "demultiplexer" contains "multiplexer", so
+    # first-match order named demux problems as multiplexers. Keep the longest
+    # matching keyword instead; ties keep declaration order.
+    best_keyword = ""
+    best_name = None
     for keyword, circuit_name in known_circuits.items():
-        if keyword in text:
-            return circuit_name
+        if keyword in text and len(keyword) > len(best_keyword):
+            best_keyword = keyword
+            best_name = circuit_name
+    if best_name:
+        return best_name
 
     gates = payload.get("gates", [])
     gate_types = [str(g.get("type", "")).upper() for g in gates]
