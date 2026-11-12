@@ -52,13 +52,20 @@ def check_power_source(components: list) -> str | None:
 
 def check_current_limiting(components: list) -> list:
     warnings = []
-    has_limiter = any(c in CURRENT_LIMITERS for c in components)
-    for comp in NEEDS_CURRENT_LIMIT:
-        if comp in components and not has_limiter:
-            warnings.append(
-                f"Warning: '{comp}' detected without a current-limiting component. "
-                "Add a resistor to prevent burnout."
-            )
+    if any(c in CURRENT_LIMITERS for c in components):
+        return warnings
+
+    # Walk the components in circuit order (not the set) so warnings are
+    # stable between runs, and report each offender only once.
+    seen: set = set()
+    for comp in components:
+        if comp not in NEEDS_CURRENT_LIMIT or comp in seen:
+            continue
+        seen.add(comp)
+        warnings.append(
+            f"Warning: '{comp}' detected without a current-limiting component. "
+            "Add a resistor to prevent burnout."
+        )
     return warnings
 
 
@@ -118,7 +125,9 @@ def check_short_circuit(connections: list) -> list:
                     continue
                 queue.append((neighbor, path_so_far + [neighbor], passed_load or _is_load(neighbor)))
 
-    return errors
+    # Repeated connection entries reach the BFS twice and produced one
+    # identical short-circuit finding per visit; report each path once.
+    return list(dict.fromkeys(errors))
 
 
 def check_floating_components(components: list, connections: list) -> list:
@@ -200,33 +209,109 @@ def check_ground_present(components: list, connections: list) -> str | None:
 
 # ── Main Entry Point ───────────────────────────────────────────────────────────
 
+_PREFIXES = ("Error: ", "Warning: ", "Info: ")
+
+
+def _strip_prefix(message: str) -> str:
+    for prefix in _PREFIXES:
+        if message.startswith(prefix):
+            return message[len(prefix):]
+    return message
+
+
+def _make_issue(severity: str, code: str, message: str, suggestion: str) -> dict:
+    return {
+        "severity":   severity,
+        "code":       code,
+        "message":    _strip_prefix(message),
+        "suggestion": suggestion,
+    }
+
+
+def _invalid_result(message: str) -> dict:
+    """Return a well-formed empty diagnosis carrying a validation error."""
+    return {
+        "circuit_name":  "",
+        "passed":        False,
+        "issues":        [],
+        "legacy_issues": [],
+        "summary":       {"errors": 0, "warnings": 0, "info": 0},
+        "error":         message,
+    }
+
+
+def _as_string_list(value, field: str) -> tuple[list | None, str]:
+    """Return (list, "") when value is a list of strings, else (None, error)."""
+    if value is None:
+        return [], ""
+    if not isinstance(value, (list, tuple)):
+        return None, f"'{field}' must be a list of strings."
+    if not all(isinstance(item, str) for item in value):
+        return None, f"Every entry in '{field}' must be a string."
+    return list(value), ""
+
+
 def diagnose_circuit(circuit: dict) -> dict:
+    if not isinstance(circuit, dict):
+        return _invalid_result("circuit_json must be a JSON object.")
+
     circuit_name = circuit.get("circuit_name", "Unnamed Circuit")
-    components = circuit.get("components", [])
-    connections = circuit.get("connections", [])
+    if not isinstance(circuit_name, str):
+        circuit_name = str(circuit_name)
+
+    raw_components, error = _as_string_list(circuit.get("components"), "components")
+    if error:
+        return _invalid_result(error)
+
+    connections, error = _as_string_list(circuit.get("connections"), "connections")
+    if error:
+        return _invalid_result(error)
+
+    components = [_fuzzy_match(_normalize(c)) for c in raw_components]
 
     issues = []
 
-    # 1. Check for Power Source
-    normalized_comps = [_normalize(c) for c in components]
-    has_power = any(c in POWER_SOURCES for c in normalized_comps)
-    if not has_power:
-        issues.append({
-            "severity": "error",
-            "code": "NO_POWER_SOURCE",
-            "message": "No power source found. Add a battery or power supply.",
-            "suggestion": "Add a 'battery' or 'power_supply' component to the circuit."
-        })
+    if (msg := check_power_source(components)):
+        issues.append(_make_issue(
+            "error", "NO_POWER_SOURCE", msg,
+            "Add a 'battery' or 'power_supply' component to the circuit.",
+        ))
 
-    # 2. Check for Floating Components
-    floating_warnings = check_floating_components(components, connections)
-    for warning_msg in floating_warnings:
-        issues.append({
-            "severity": "warning",
-            "code": "FLOATING_COMPONENT",
-            "message": warning_msg,
-            "suggestion": "Ensure all terminals of this component are properly connected in the circuit paths."
-        })
+    if (msg := check_empty_connections(connections)):
+        issues.append(_make_issue(
+            "error", "NO_CONNECTIONS", msg,
+            "Add at least one connection, e.g. 'battery -> resistor -> led'.",
+        ))
+
+    for msg in check_current_limiting(components):
+        issues.append(_make_issue(
+            "warning", "MISSING_CURRENT_LIMITER", msg,
+            "Add a resistor in series with the component.",
+        ))
+
+    for msg in check_short_circuit(connections):
+        issues.append(_make_issue(
+            "error", "SHORT_CIRCUIT", msg,
+            "Place a load (resistor, LED, motor, ...) between power and ground.",
+        ))
+
+    for msg in check_floating_components(components, connections):
+        issues.append(_make_issue(
+            "warning", "FLOATING_COMPONENT", msg,
+            "Ensure all terminals of this component are properly connected in the circuit paths.",
+        ))
+
+    if (msg := check_capacitor_polarity(components, connections)):
+        issues.append(_make_issue(
+            "warning", "CAPACITOR_POLARITY", msg,
+            "Label capacitor terminals (e.g. 'capacitor+' / 'capacitor-') for polarised parts.",
+        ))
+
+    if (msg := check_ground_present(components, connections)):
+        issues.append(_make_issue(
+            "info", "NO_GROUND", msg,
+            "Add a ground connection for a complete circuit.",
+        ))
 
     # Backward compatibility: extract plain text strings for legacy frontends
     legacy_issues = [f"{i['severity'].capitalize()}: {i['message']}" for i in issues]
@@ -238,7 +323,8 @@ def diagnose_circuit(circuit: dict) -> dict:
 
     return {
         "circuit_name": circuit_name,
-        "passed": error_count == 0,
+        # Preserve the pre-refactor contract: warnings fail a diagnosis too.
+        "passed": error_count == 0 and warning_count == 0,
         "issues": issues,
         "legacy_issues": legacy_issues,
         "summary": {
