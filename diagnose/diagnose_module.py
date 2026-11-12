@@ -125,7 +125,9 @@ def check_short_circuit(connections: list) -> list:
                     continue
                 queue.append((neighbor, path_so_far + [neighbor], passed_load or _is_load(neighbor)))
 
-    return errors
+    # Repeated connection entries reach the BFS twice and produced one
+    # identical short-circuit finding per visit; report each path once.
+    return list(dict.fromkeys(errors))
 
 
 def check_floating_components(components: list, connections: list) -> list:

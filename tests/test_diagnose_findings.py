@@ -12,7 +12,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from diagnose.diagnose_module import check_current_limiting
+from diagnose.diagnose_module import (
+    check_current_limiting,
+    check_short_circuit,
+    diagnose_circuit,
+)
 
 
 class TestCurrentLimitWarningOrder:
@@ -38,3 +42,26 @@ class TestCurrentLimitWarningOrder:
 
     def test_a_limiter_silences_every_warning(self):
         assert check_current_limiting(["led", "diode", "resistor"]) == []
+
+
+class TestShortCircuitDuplicates:
+
+    def test_duplicate_connection_reports_one_short(self):
+        result = diagnose_circuit({
+            "circuit_name": "Dead short",
+            "components": ["battery", "ground"],
+            "connections": ["battery -> ground", "battery -> ground"],
+        })
+
+        shorts = [i for i in result["issues"] if i["code"] == "SHORT_CIRCUIT"]
+        assert len(shorts) == 1
+
+    def test_distinct_short_paths_are_both_kept(self):
+        problems = check_short_circuit([
+            "battery -> ground",
+            "battery -> wire -> ground",
+        ])
+
+        assert len(problems) == 2
+        assert "battery -> ground" in problems[0]
+        assert "battery -> wire -> ground" in problems[1]
