@@ -66,13 +66,44 @@ def _check_warnings(components: list[str], unknown: list[str]) -> list[str]:
 
 # ── Main Entry Point ───────────────────────────────────────────────────────────
 
+def _invalid_result(message: str) -> dict[str, Any]:
+    """Return a well-formed empty result carrying a validation error."""
+    return {
+        "explanation":       "",
+        "component_details": [],
+        "flow_description":  "",
+        "warnings":          [],
+        "error":             message,
+    }
+
+
+def _as_string_list(value, field: str) -> tuple[list[str] | None, str]:
+    """Return (list, "") when value is a list of strings, else (None, error)."""
+    if value is None:
+        return [], ""
+    if not isinstance(value, (list, tuple)):
+        return None, f"'{field}' must be a list of strings."
+    if not all(isinstance(item, str) for item in value):
+        return None, f"Every entry in '{field}' must be a string."
+    return list(value), ""
+
+
 def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
     """
     Input:  circuit JSON with 'components' and 'connections' lists
     Output: { explanation, component_details, flow_description, warnings }
+            plus 'error' when the input shape is invalid
     """
-    raw_components = circuit_json.get("components", [])
-    connections    = circuit_json.get("connections", [])
+    if not isinstance(circuit_json, dict):
+        return _invalid_result("circuit_json must be a JSON object.")
+
+    raw_components, error = _as_string_list(circuit_json.get("components"), "components")
+    if error:
+        return _invalid_result(error)
+
+    connections, error = _as_string_list(circuit_json.get("connections"), "connections")
+    if error:
+        return _invalid_result(error)
 
     components        = [_fuzzy_match(_normalize(c)) for c in raw_components]
     component_details = []
