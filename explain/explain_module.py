@@ -15,6 +15,7 @@ from utils.component_resolver import (
     CURRENT_LIMITERS,
     _normalize,
     _fuzzy_match,
+    is_logic_circuit,
 )
 
 # ── Explain-specific constants ─────────────────────────────────────────────────
@@ -53,7 +54,7 @@ def _parse_flow(connections: list[str]) -> str:
 
 def _check_warnings(components: list[str], unknown: list[str]) -> list[str]:
     warnings = []
-    if not any(c in POWER_SOURCES for c in components):
+    if not is_logic_circuit(components) and not any(c in POWER_SOURCES for c in components):
         warnings.append("No power source detected. The circuit cannot operate without one.")
     has_limiter = any(c in CURRENT_LIMITERS for c in components)
     for comp in NEEDS_CURRENT_LIMIT:
@@ -94,8 +95,13 @@ def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
                 "description": "component not in knowledge base",
             })
 
+    flow_description = _parse_flow(connections) if connections else ""
+
     if not components:
-        explanation = "No components provided. Cannot generate an explanation."
+        # Connections without components still describe something: report
+        # the flow instead of claiming no explanation can be generated.
+        explanation = "No components provided. "
+        explanation += flow_description or "Cannot generate an explanation."
     else:
         parts = []
         for detail in component_details:
@@ -108,10 +114,8 @@ def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
         else:
             explanation = "This circuit uses " + ", ".join(parts[:-1]) + ", and " + parts[-1] + "."
 
-    flow_description = _parse_flow(connections) if connections else ""
-
-    if flow_description:
-        explanation = explanation.rstrip(".") + ". " + flow_description
+        if flow_description:
+            explanation = explanation.rstrip(".") + ". " + flow_description
 
     return {
         "explanation":       explanation,

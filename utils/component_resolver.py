@@ -6,6 +6,8 @@ Shared component definitions and helper functions used by
 both the Explain and Diagnose modules.
 """
 
+import re
+
 COMPONENT_DB: dict[str, dict] = {
     # Power
     "battery":       {"role": "power source",      "description": "provides electrical energy to the circuit"},
@@ -72,8 +74,26 @@ COMPONENT_DB: dict[str, dict] = {
     "input_a":       {"role": "input signal",  "description": "provides a digital input signal (A)"},
     "input_b":       {"role": "input signal",  "description": "provides a digital input signal (B)"},
     "input_c":       {"role": "input signal",  "description": "provides a digital input signal (C)"},
+    "input_din":     {"role": "input signal",  "description": "provides the serial data input (DIN)"},
+    "sel":           {"role": "input signal",  "description": "selects which input is routed to the output"},
+    "bin":           {"role": "input signal",  "description": "carries the borrow-in bit"},
+    "cin":           {"role": "input signal",  "description": "carries the carry-in bit"},
+    "output":        {"role": "output signal", "description": "carries the circuit output"},
     "sum_output":    {"role": "output signal", "description": "carries the sum result of an arithmetic operation"},
     "carry_output":  {"role": "output signal", "description": "carries the carry result of an arithmetic operation"},
+    "diff_output":   {"role": "output signal", "description": "carries the difference result of a subtraction"},
+    "borrow_output": {"role": "output signal", "description": "carries the borrow result of a subtraction"},
+    "parity_output": {"role": "output signal", "description": "carries the parity bit of its inputs"},
+    "cout":          {"role": "output signal", "description": "carries the carry-out bit"},
+    "eq_out":        {"role": "output signal", "description": "is HIGH when both inputs are equal"},
+    "gt_out":        {"role": "output signal", "description": "is HIGH when the first input is greater"},
+    "lt_out":        {"role": "output signal", "description": "is HIGH when the first input is smaller"},
+    "output_y0":     {"role": "output signal", "description": "carries demultiplexer output Y0"},
+    "output_y1":     {"role": "output signal", "description": "carries demultiplexer output Y1"},
+    "y0":            {"role": "output signal", "description": "carries decoder output Y0"},
+    "y1":            {"role": "output signal", "description": "carries decoder output Y1"},
+    "y2":            {"role": "output signal", "description": "carries decoder output Y2"},
+    "y3":            {"role": "output signal", "description": "carries decoder output Y3"},
 }
 
 POWER_SOURCES       = {"battery", "power_supply", "solar_cell"}
@@ -109,8 +129,28 @@ LOAD_COMPONENTS = {
 
 KNOWN_COMPONENTS = set(COMPONENT_DB.keys())
 
+# Roles that make up a pure digital-logic circuit: gates plus their I/O ports.
+LOGIC_ROLES = {"logic gate", "input signal", "output signal"}
+
+
+def is_logic_circuit(components: list) -> bool:
+    """True when every component is a logic gate or a logic I/O signal."""
+    if not components:
+        return False
+    resolved = [_fuzzy_match(_normalize(str(c))) for c in components]
+    return all(
+        name in COMPONENT_DB and COMPONENT_DB[name]["role"] in LOGIC_ROLES
+        for name in resolved
+    )
+
+
+_SEPARATOR_RE = re.compile(r"[\s\-]+")
+
+
 def _normalize(name: str) -> str:
-    return name.strip().lower().replace(" ", "_").replace("-", "_")
+    # Collapse runs of separators so "DC--Motor" and "solar  panel" match
+    # their canonical keys instead of keeping doubled underscores.
+    return _SEPARATOR_RE.sub("_", str(name).strip().lower())
 
 
 # Expanded Alias Dictionary (Task B4)
