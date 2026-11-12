@@ -7,6 +7,7 @@ and returns a structured result with warnings and errors.
 """
 
 from typing import Any
+import re
 
 from utils.component_resolver import (
     POWER_SOURCES,
@@ -25,8 +26,15 @@ POSITIVE_KEYWORDS   = {"+", "pos", "positive", "anode", "vcc", "v+", "plus"}
 GROUND_KEYWORDS     = {"ground", "gnd", "0v", "v-", "negative", "common"}
 WIRE_LABELS         = {"wire", "node", "net", "junction", "point", "trace"}
 
+_TOKEN_RE           = re.compile(r"[a-z0-9]+")
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+
+def _tokens(name: str) -> set:
+    """Split a normalised name into whole tokens (led+ -> {'led'})."""
+    return set(_TOKEN_RE.findall(name))
 
 
 def _parse_connections(connections: list) -> list:
@@ -123,26 +131,27 @@ def check_short_circuit(connections: list) -> list:
 
 def check_floating_components(components: list, connections: list) -> list:
     warnings = []
-    
-    # Build a set of all nodes that appear in connections
-    connected_nodes = set()
+
+    # Collect the tokens of every node that appears in a connection, so that
+    # "or" is not considered wired just because it is a substring of "motor".
+    connected_nodes = []
     for path in _parse_connections(connections):
         for node in path:
-            connected_nodes.add(_normalize(node))
-    
+            connected_nodes.append(_tokens(_normalize(node)))
+
     for comp in components:
         normalized = _normalize(comp)
         if normalized in POWER_SOURCES:
             continue
         if normalized in GROUND_KEYWORDS or "ground" in normalized or "gnd" in normalized:
             continue
-        
-        # Check if this component appears in ANY connection node
-        is_connected = any(
-            normalized == node or normalized in node or node in normalized
-            for node in connected_nodes
+
+        comp_tokens = _tokens(normalized)
+        is_connected = bool(comp_tokens) and any(
+            comp_tokens <= node_tokens or node_tokens <= comp_tokens
+            for node_tokens in connected_nodes
         )
-        
+
         if not is_connected:
             warnings.append(
                 f"Warning: '{comp}' is not found in any connection. "
