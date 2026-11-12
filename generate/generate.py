@@ -102,8 +102,10 @@ def generate_with_rules(prompt: str) -> dict:
         if pattern.search(p):
             return {
                 "circuit_name": name,
-                "components":   components,
-                "connections":  connections,
+                # Copy the rule's lists so callers can edit results without
+                # corrupting the shared rule table for later requests.
+                "components":   list(components),
+                "connections":  list(connections),
                 "confidence":   "high",
                 "description":  description,
                 "source":       "rule-based",
