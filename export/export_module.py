@@ -276,7 +276,7 @@ def _classify_component(component: str, index: int, total: int) -> tuple[str, in
         gate_type = "NOT"
     else:
         gate_type = comp_upper
-    return gate_type, (1 if gate_type == "NOT" else 2), True
+    return gate_type, (1 if gate_type in {"NOT", "BUFFER"} else 2), True
 
 
 def _layout_gates(gates: list, wires: list) -> None:
