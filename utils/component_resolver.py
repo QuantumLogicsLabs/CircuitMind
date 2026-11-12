@@ -6,6 +6,8 @@ Shared component definitions and helper functions used by
 both the Explain and Diagnose modules.
 """
 
+import re
+
 COMPONENT_DB: dict[str, dict] = {
     # Power
     "battery":       {"role": "power source",      "description": "provides electrical energy to the circuit"},
@@ -169,14 +171,51 @@ _ALIASES = {
 }
 
 
+def _tokenize(name: str) -> list[str]:
+    return [token for token in re.split(r"[^a-z0-9]+", name) if token]
+
+
+def _singular(token: str) -> str:
+    if token.endswith("ies") and len(token) > 3:
+        return token[:-3] + "y"
+    if token.endswith(("ses", "xes", "zes", "ches", "shes")):
+        return token[:-2]
+    if token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
 def _fuzzy_match(name: str) -> str:
-    """Resolve a component name to its canonical COMPONENT_DB key."""
+    """Resolve a component name to its canonical COMPONENT_DB key.
+
+    Matching is token based, so words that merely contain a component name
+    (e.g. "candle" containing "and") are not misclassified.
+    """
+    name = _normalize(name)
     if name in COMPONENT_DB:
         return name
     if name in _ALIASES:
         return _ALIASES[name]
-    # Substring: find canonical names contained within the input
-    matches = [canon for canon in COMPONENT_DB if canon in name]
+
+    tokens = _tokenize(name)
+    matches: list[str] = []
+    for size in range(len(tokens), 0, -1):
+        for start in range(len(tokens) - size + 1):
+            phrase = "_".join(tokens[start:start + size])
+            if phrase in COMPONENT_DB:
+                matches.append(phrase)
+            elif phrase in _ALIASES:
+                matches.append(_ALIASES[phrase])
+            else:
+                singular_phrase = "_".join(
+                    tokens[start:start + size - 1]
+                    + [_singular(tokens[start + size - 1])]
+                )
+                if singular_phrase in COMPONENT_DB:
+                    matches.append(singular_phrase)
+                elif singular_phrase in _ALIASES:
+                    matches.append(_ALIASES[singular_phrase])
+
     if matches:
         return max(matches, key=len)  # longest match = most specific
     return name
