@@ -200,33 +200,73 @@ def check_ground_present(components: list, connections: list) -> str | None:
 
 # ── Main Entry Point ───────────────────────────────────────────────────────────
 
+_PREFIXES = ("Error: ", "Warning: ", "Info: ")
+
+
+def _strip_prefix(message: str) -> str:
+    for prefix in _PREFIXES:
+        if message.startswith(prefix):
+            return message[len(prefix):]
+    return message
+
+
+def _make_issue(severity: str, code: str, message: str, suggestion: str) -> dict:
+    return {
+        "severity":   severity,
+        "code":       code,
+        "message":    _strip_prefix(message),
+        "suggestion": suggestion,
+    }
+
+
 def diagnose_circuit(circuit: dict) -> dict:
     circuit_name = circuit.get("circuit_name", "Unnamed Circuit")
-    components = circuit.get("components", [])
+    components = [_fuzzy_match(_normalize(c)) for c in circuit.get("components", [])]
     connections = circuit.get("connections", [])
 
     issues = []
 
-    # 1. Check for Power Source
-    normalized_comps = [_normalize(c) for c in components]
-    has_power = any(c in POWER_SOURCES for c in normalized_comps)
-    if not has_power:
-        issues.append({
-            "severity": "error",
-            "code": "NO_POWER_SOURCE",
-            "message": "No power source found. Add a battery or power supply.",
-            "suggestion": "Add a 'battery' or 'power_supply' component to the circuit."
-        })
+    if (msg := check_power_source(components)):
+        issues.append(_make_issue(
+            "error", "NO_POWER_SOURCE", msg,
+            "Add a 'battery' or 'power_supply' component to the circuit.",
+        ))
 
-    # 2. Check for Floating Components
-    floating_warnings = check_floating_components(components, connections)
-    for warning_msg in floating_warnings:
-        issues.append({
-            "severity": "warning",
-            "code": "FLOATING_COMPONENT",
-            "message": warning_msg,
-            "suggestion": "Ensure all terminals of this component are properly connected in the circuit paths."
-        })
+    if (msg := check_empty_connections(connections)):
+        issues.append(_make_issue(
+            "error", "NO_CONNECTIONS", msg,
+            "Add at least one connection, e.g. 'battery -> resistor -> led'.",
+        ))
+
+    for msg in check_current_limiting(components):
+        issues.append(_make_issue(
+            "warning", "MISSING_CURRENT_LIMITER", msg,
+            "Add a resistor in series with the component.",
+        ))
+
+    for msg in check_short_circuit(connections):
+        issues.append(_make_issue(
+            "error", "SHORT_CIRCUIT", msg,
+            "Place a load (resistor, LED, motor, ...) between power and ground.",
+        ))
+
+    for msg in check_floating_components(components, connections):
+        issues.append(_make_issue(
+            "warning", "FLOATING_COMPONENT", msg,
+            "Ensure all terminals of this component are properly connected in the circuit paths.",
+        ))
+
+    if (msg := check_capacitor_polarity(components, connections)):
+        issues.append(_make_issue(
+            "warning", "CAPACITOR_POLARITY", msg,
+            "Label capacitor terminals (e.g. 'capacitor+' / 'capacitor-') for polarised parts.",
+        ))
+
+    if (msg := check_ground_present(components, connections)):
+        issues.append(_make_issue(
+            "info", "NO_GROUND", msg,
+            "Add a ground connection for a complete circuit.",
+        ))
 
     # Backward compatibility: extract plain text strings for legacy frontends
     legacy_issues = [f"{i['severity'].capitalize()}: {i['message']}" for i in issues]
@@ -238,7 +278,8 @@ def diagnose_circuit(circuit: dict) -> dict:
 
     return {
         "circuit_name": circuit_name,
-        "passed": error_count == 0,
+        # Preserve the pre-refactor contract: warnings fail a diagnosis too.
+        "passed": error_count == 0 and warning_count == 0,
         "issues": issues,
         "legacy_issues": legacy_issues,
         "summary": {

@@ -18,6 +18,7 @@ from generate.generate import generate_circuit as _generate_circuit
 from explain.explain_module import explain_circuit as _explain_circuit
 from diagnose.diagnose_module import diagnose_circuit as _diagnose_circuit
 from export.export_module import export_module as _export_module
+from utils.issue_format import issue_rows
 
 load_dotenv()
 
@@ -164,14 +165,11 @@ with tab3:
             elif result.get("passed"):
                 st.success("✅ No issues found. Circuit looks valid.")
             else:
-                st.error(f"❌ {len(result.get('issues', []))} issue(s) found:")
-                for issue in result.get("issues", []):
-                    if issue.startswith("Error"):
-                        st.error(issue)
-                    elif issue.startswith("Warning"):
-                        st.warning(issue)
-                    else:
-                        st.info(issue)
+                rows = issue_rows(result.get("issues", []))
+                st.error(f"❌ {len(rows)} issue(s) found:")
+                render = {"error": st.error, "warning": st.warning, "info": st.info}
+                for row in rows:
+                    render.get(row["severity"], st.info)(row["text"])
 
         except json.JSONDecodeError as e:
             st.error(f"Invalid JSON: {e}")
