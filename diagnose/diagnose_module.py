@@ -7,6 +7,7 @@ and returns a structured result with warnings and errors.
 """
 
 from typing import Any
+import re
 
 from utils.component_resolver import (
     POWER_SOURCES,
@@ -189,10 +190,18 @@ def check_capacitor_polarity(components: list, connections: list) -> str | None:
     return None
 
 
+_GROUND_RE = re.compile(
+    r"(?<![a-z0-9_])(?:gnd\w*|ground\w*|0v|v-|negative|common)(?![a-z0-9_])",
+    re.IGNORECASE,
+)
+
+
 def check_ground_present(components: list, connections: list) -> str | None:
-    all_text = " ".join(components + connections).lower()
-    has_ground = any(kw in all_text for kw in GROUND_KEYWORDS)
-    has_power  = any(c in POWER_SOURCES for c in components)
+    all_text = " ".join(str(part) for part in list(components) + list(connections))
+    has_ground = bool(_GROUND_RE.search(all_text))
+    has_power = any(
+        _fuzzy_match(_normalize(str(c))) in POWER_SOURCES for c in components
+    )
     if has_power and not has_ground:
         return "Info: No ground reference found. Consider adding a ground connection for a complete circuit."
     return None
