@@ -172,6 +172,46 @@ def generate_with_llm(prompt: str) -> dict:
     return result
 
 
+_VALID_CONFIDENCE = ("high", "medium", "low")
+
+
+def _validate_llm_circuit(result) -> dict:
+    """
+    Enforce the circuit contract on LLM output.
+    Raises ValueError when the payload cannot be used downstream, which makes
+    generate_circuit() fall back to the rule-based generator.
+    """
+    if not isinstance(result, dict):
+        raise ValueError(f"expected a JSON object, got {type(result).__name__}")
+
+    name = result.get("circuit_name")
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("'circuit_name' must be a non-empty string")
+
+    components = result.get("components")
+    if not isinstance(components, list) or not components:
+        raise ValueError("'components' must be a non-empty list")
+    if not all(isinstance(c, str) and c.strip() for c in components):
+        raise ValueError("'components' entries must be non-empty strings")
+
+    connections = result.get("connections")
+    if not isinstance(connections, list) or not connections:
+        raise ValueError("'connections' must be a non-empty list")
+    if not all(isinstance(c, str) and c.strip() for c in connections):
+        raise ValueError("'connections' entries must be non-empty strings")
+
+    validated = dict(result)
+    validated["circuit_name"] = name.strip()
+    validated["components"] = [c.strip() for c in components]
+    validated["connections"] = [c.strip() for c in connections]
+    if validated.get("confidence") not in _VALID_CONFIDENCE:
+        validated["confidence"] = "medium"
+    if not isinstance(validated.get("description"), str):
+        validated["description"] = ""
+    validated["source"] = "llm"
+    return validated
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def generate_circuit(user_prompt: str) -> dict:
@@ -187,7 +227,7 @@ def generate_circuit(user_prompt: str) -> dict:
 
     try:
         logger.info("Attempting LLM generation via Groq")
-        return generate_with_llm(clean_prompt)
+        return _validate_llm_circuit(generate_with_llm(clean_prompt))
     except Exception as e:
-        logger.warning(f"LLM unavailable ({e}), falling back to rule-based generation")
+        logger.warning(f"LLM unavailable or invalid ({e}), falling back to rule-based generation")
         return generate_with_rules(clean_prompt)
