@@ -27,6 +27,58 @@ except ImportError:
     pass
 
 
+# ── Payload Normalisation ─────────────────────────────────────────────────────
+
+def _as_text_list(value) -> list:
+    """Coerce a loosely typed field into a list of non-empty strings."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = [value]
+    elif not isinstance(value, (list, tuple, set)):
+        value = [value]
+
+    items = []
+    for item in value:
+        if item is None:
+            continue
+        text = str(item).strip()
+        if text:
+            items.append(text)
+    return items
+
+
+def _as_dict_list(value) -> list:
+    """Keep only dict entries; a bare dict becomes a one-item list."""
+    if isinstance(value, dict):
+        return [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _sanitize_payload(payload) -> dict:
+    """Return a payload whose fields have the shapes the hint code expects."""
+    if not isinstance(payload, dict):
+        payload = {}
+
+    clean = dict(payload)
+    clean["inputs"] = _as_text_list(payload.get("inputs"))
+    clean["outputs"] = _as_text_list(payload.get("outputs"))
+    clean["truth_table"] = _as_dict_list(payload.get("truth_table"))
+    clean["gates"] = _as_dict_list(payload.get("gates"))
+    clean["wires"] = _as_dict_list(payload.get("wires"))
+
+    last_result = payload.get("last_result")
+    clean["last_result"] = last_result if isinstance(last_result, dict) else {}
+
+    for key in ("problem_title", "problem_description"):
+        value = payload.get(key)
+        clean[key] = "" if value is None else str(value)
+
+    return clean
+
+
 # ── LLM Hint ─────────────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = (
@@ -63,7 +115,9 @@ def _summarize_circuit(gates: list, wires: list) -> str:
         from_g = next((g for g in gates if g.get("id") == w.get("fromId")), None)
         to_g = next((g for g in gates if g.get("id") == w.get("toId")), None)
         if from_g and to_g:
-            wire_lines.append(f"- {from_g.get('label')} -> {to_g.get('label')}")
+            from_name = from_g.get("label") or f"gate{from_g.get('id')}"
+            to_name = to_g.get("label") or f"gate{to_g.get('id')}"
+            wire_lines.append(f"- {from_name} -> {to_name}")
 
     return (
         "Gates:\n" + "\n".join(gate_lines)
@@ -175,6 +229,12 @@ def _hint_with_rules(payload: dict) -> str:
     outputs = payload.get("outputs", [])
 
     if not gates:
+        if not inputs and not outputs:
+            return (
+                "Set up the problem's input and output labels first, then place "
+                "matching INPUT and OUTPUT gates and wire logic gates between "
+                "them."
+            )
         return (
             f"Start by placing {len(inputs)} INPUT gate(s) named exactly "
             f"{', '.join(inputs) or '(see problem)'} and {len(outputs)} OUTPUT "
@@ -223,6 +283,8 @@ def generate_hint(payload: dict) -> dict:
         "source": "llm" | "rule-based"
     }
     """
+    payload = _sanitize_payload(payload)
+
     if payload.get("request_type") == "identify":
         circuit_name = _identify_circuit(payload)
 
