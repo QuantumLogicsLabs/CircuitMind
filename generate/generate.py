@@ -141,6 +141,32 @@ _USER_TEMPLATE = (
     '}}'
 )
 
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.IGNORECASE | re.DOTALL)
+
+
+def _parse_llm_json(raw: str) -> dict:
+    """
+    Pull the first decodable JSON object out of an LLM reply.
+
+    Models often wrap the payload in a markdown fence or add a sentence before
+    or after it. Decode from the first brace so trailing prose is ignored, and
+    try fenced blocks first because prose may itself contain braces.
+    """
+    candidates = [match.group(1) for match in _FENCE_RE.finditer(raw)]
+    candidates.append(raw)
+
+    for text in candidates:
+        start = text.find("{")
+        while start != -1:
+            try:
+                result, _ = json.JSONDecoder().raw_decode(text[start:])
+                return result
+            except json.JSONDecodeError:
+                start = text.find("{", start + 1)
+
+    raise ValueError("LLM reply did not contain a valid JSON object")
+
+
 def generate_with_llm(prompt: str) -> dict:
     if not GROQ_AVAILABLE:
         raise RuntimeError("Groq not installed. Run: pip install groq")
@@ -160,16 +186,49 @@ def generate_with_llm(prompt: str) -> dict:
         temperature=0.2,
     )
 
-    raw = completion.choices[0].message.content.strip()
-
-    # Strip accidental markdown fences
-    if raw.startswith("```"):
-        parts = raw.split("```")
-        raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
-
-    result = json.loads(raw)   # raises JSONDecodeError if invalid
+    result = _parse_llm_json(completion.choices[0].message.content)
     result["source"] = "llm"
     return result
+
+
+_VALID_CONFIDENCE = ("high", "medium", "low")
+
+
+def _validate_llm_circuit(result) -> dict:
+    """
+    Enforce the circuit contract on LLM output.
+    Raises ValueError when the payload cannot be used downstream, which makes
+    generate_circuit() fall back to the rule-based generator.
+    """
+    if not isinstance(result, dict):
+        raise ValueError(f"expected a JSON object, got {type(result).__name__}")
+
+    name = result.get("circuit_name")
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("'circuit_name' must be a non-empty string")
+
+    components = result.get("components")
+    if not isinstance(components, list) or not components:
+        raise ValueError("'components' must be a non-empty list")
+    if not all(isinstance(c, str) and c.strip() for c in components):
+        raise ValueError("'components' entries must be non-empty strings")
+
+    connections = result.get("connections")
+    if not isinstance(connections, list) or not connections:
+        raise ValueError("'connections' must be a non-empty list")
+    if not all(isinstance(c, str) and c.strip() for c in connections):
+        raise ValueError("'connections' entries must be non-empty strings")
+
+    validated = dict(result)
+    validated["circuit_name"] = name.strip()
+    validated["components"] = [c.strip() for c in components]
+    validated["connections"] = [c.strip() for c in connections]
+    if validated.get("confidence") not in _VALID_CONFIDENCE:
+        validated["confidence"] = "medium"
+    if not isinstance(validated.get("description"), str):
+        validated["description"] = ""
+    validated["source"] = "llm"
+    return validated
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -187,7 +246,7 @@ def generate_circuit(user_prompt: str) -> dict:
 
     try:
         logger.info("Attempting LLM generation via Groq")
-        return generate_with_llm(clean_prompt)
+        return _validate_llm_circuit(generate_with_llm(clean_prompt))
     except Exception as e:
-        logger.warning(f"LLM unavailable ({e}), falling back to rule-based generation")
+        logger.warning(f"LLM unavailable or invalid ({e}), falling back to rule-based generation")
         return generate_with_rules(clean_prompt)
