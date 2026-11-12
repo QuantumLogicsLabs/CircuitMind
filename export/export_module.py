@@ -207,7 +207,7 @@ def generate_svg(circuit_name: str, components: list) -> str:
     # Resolve aliases and separator variants ("solar  panel", "DC--Motor")
     # so they draw their proper symbol instead of a generic box.
     normalized = [_svg_key(c) for c in components]
-    drawable   = [c for c in normalized if c != "ground"]
+    drawable   = [c for c in normalized if c not in ("ground", "gnd")]
 
     if not drawable:
         raise RuntimeError("No drawable components found in the circuit.")

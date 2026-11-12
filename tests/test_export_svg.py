@@ -60,3 +60,18 @@ class TestSvgRendering:
 
     def test_signature_distinguishes_known_from_generic_boxes(self):
         assert _shape_signature(["fluxbox"]) != _shape_signature(["dc_motor"])
+
+
+class TestGroundHandling:
+
+    def test_ground_alias_is_not_drawn_as_a_component(self):
+        svg = generate_svg("Grounded", ["battery", "led", "GND"])
+
+        assert "Gnd" not in svg
+        assert _shape_signature(["battery", "led", "GND"]) == _shape_signature(
+            ["battery", "led"]
+        )
+
+    def test_ground_only_circuit_is_not_drawable(self):
+        with pytest.raises(RuntimeError):
+            generate_svg("Ground only", ["ground", "gnd"])
