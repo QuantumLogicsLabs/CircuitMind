@@ -1,5 +1,6 @@
 import sys
 import os
+import hmac
 import logging
 import time
 import json
@@ -61,7 +62,9 @@ def verify_api_key(x_api_key: str = Header(default=None)):
     if not API_KEY:
         return  # dev mode (open access)
 
-    if x_api_key != API_KEY:
+    # Constant-time comparison so response timing does not reveal how much
+    # of a guessed key matched.
+    if not x_api_key or not hmac.compare_digest(x_api_key, API_KEY):
         raise HTTPException(
             status_code=401,
             detail="Invalid or missing API key"
