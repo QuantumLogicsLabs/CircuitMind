@@ -9,9 +9,12 @@ Converts circuit JSON into:
 """
 
 import json
+import re
 import logging
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+
+from utils.component_resolver import _fuzzy_match
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +117,17 @@ VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
+_SEPARATOR_RE = re.compile(r"[\s\-]+")
+
+
 def _component_key(component: str) -> str:
-    """Normalise a component name for map lookups ("DC Motor" -> "dc_motor")."""
-    return str(component).strip().lower().replace(" ", "_").replace("-", "_")
+    """Normalise a component name for map lookups ("DC--Motor" -> "dc_motor")."""
+    return _SEPARATOR_RE.sub("_", str(component).strip().lower())
+
+
+def _svg_key(component: str) -> str:
+    """Resolve a component to its canonical key before SVG map lookup."""
+    return _fuzzy_match(_component_key(component))
 
 
 def generate_spice(circuit_name: str, components: list) -> str:
@@ -193,10 +204,9 @@ def generate_svg(circuit_name: str, components: list) -> str:
         "fuse":          elm.Fuse,
     }
 
-    def _norm(name: str) -> str:
-        return name.strip().lower().replace(" ", "_").replace("-", "_")
-
-    normalized = [_norm(c) for c in components]
+    # Resolve aliases and separator variants ("solar  panel", "DC--Motor")
+    # so they draw their proper symbol instead of a generic box.
+    normalized = [_svg_key(c) for c in components]
     drawable   = [c for c in normalized if c != "ground"]
 
     if not drawable:
