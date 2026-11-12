@@ -362,13 +362,28 @@ def generate_gate_json(circuit_name: str, components: list, connections: list) -
             "label":       component.upper(),
         })
 
+    ids_by_label = defaultdict(list)
+    for gate in gates:
+        ids_by_label[gate["label"]].append(gate["id"])
+
+    def _gate_id(parts: list, position: int):
+        """Pick the gate for one name occurrence; repeated names advance."""
+        label = parts[position].upper()
+        ids = ids_by_label.get(label)
+        if not ids:
+            return None
+        occurrence = sum(
+            1 for earlier in parts[:position] if earlier.strip().upper() == label
+        )
+        return ids[min(occurrence, len(ids) - 1)]
+
     wire_id = 0
     target_pin_indices = {}
     for conn in connections:
         parts = [p.strip() for p in conn.split("->")]
         for j in range(len(parts) - 1):
-            from_id = next((g["id"] for g in gates if g["label"] == parts[j].upper()), None)
-            to_id   = next((g["id"] for g in gates if g["label"] == parts[j + 1].upper()), None)
+            from_id = _gate_id(parts, j)
+            to_id   = _gate_id(parts, j + 1)
             if from_id is not None and to_id is not None:
                 to_index = target_pin_indices.get(to_id, 0)
                 wires.append({"id": wire_id, "fromId": from_id, "toId": to_id, "toIndex": to_index})
