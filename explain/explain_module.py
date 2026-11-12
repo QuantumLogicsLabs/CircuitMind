@@ -15,6 +15,7 @@ from utils.component_resolver import (
     CURRENT_LIMITERS,
     _normalize,
     _fuzzy_match,
+    is_logic_circuit,
 )
 
 # ── Explain-specific constants ─────────────────────────────────────────────────
@@ -53,13 +54,21 @@ def _parse_flow(connections: list[str]) -> str:
 
 def _check_warnings(components: list[str], unknown: list[str]) -> list[str]:
     warnings = []
-    if not any(c in POWER_SOURCES for c in components):
+    if not is_logic_circuit(components) and not any(c in POWER_SOURCES for c in components):
         warnings.append("No power source detected. The circuit cannot operate without one.")
-    has_limiter = any(c in CURRENT_LIMITERS for c in components)
-    for comp in NEEDS_CURRENT_LIMIT:
-        if comp in components and not has_limiter:
-            warnings.append(f"'{comp}' detected without a current-limiting component. Add a resistor to prevent burnout.")
-    for u in unknown:
+    if not any(c in CURRENT_LIMITERS for c in components):
+        # Walk the components in circuit order (not the set) so warnings keep
+        # a stable order, and report each part only once.
+        seen: set = set()
+        for comp in components:
+            if comp not in NEEDS_CURRENT_LIMIT or comp in seen:
+                continue
+            seen.add(comp)
+            warnings.append(
+                f"'{comp}' detected without a current-limiting component. "
+                "Add a resistor to prevent burnout."
+            )
+    for u in dict.fromkeys(unknown):
         warnings.append(f"Unknown component '{u}' — not in the knowledge base. Check the component name.")
     return warnings
 
