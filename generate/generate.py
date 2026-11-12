@@ -141,6 +141,32 @@ _USER_TEMPLATE = (
     '}}'
 )
 
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.IGNORECASE | re.DOTALL)
+
+
+def _parse_llm_json(raw: str) -> dict:
+    """
+    Pull the first decodable JSON object out of an LLM reply.
+
+    Models often wrap the payload in a markdown fence or add a sentence before
+    or after it. Decode from the first brace so trailing prose is ignored, and
+    try fenced blocks first because prose may itself contain braces.
+    """
+    candidates = [match.group(1) for match in _FENCE_RE.finditer(raw)]
+    candidates.append(raw)
+
+    for text in candidates:
+        start = text.find("{")
+        while start != -1:
+            try:
+                result, _ = json.JSONDecoder().raw_decode(text[start:])
+                return result
+            except json.JSONDecodeError:
+                start = text.find("{", start + 1)
+
+    raise ValueError("LLM reply did not contain a valid JSON object")
+
+
 def generate_with_llm(prompt: str) -> dict:
     if not GROQ_AVAILABLE:
         raise RuntimeError("Groq not installed. Run: pip install groq")
@@ -160,14 +186,7 @@ def generate_with_llm(prompt: str) -> dict:
         temperature=0.2,
     )
 
-    raw = completion.choices[0].message.content.strip()
-
-    # Strip accidental markdown fences
-    if raw.startswith("```"):
-        parts = raw.split("```")
-        raw = parts[1].lstrip("json").strip() if len(parts) > 1 else raw
-
-    result = json.loads(raw)   # raises JSONDecodeError if invalid
+    result = _parse_llm_json(completion.choices[0].message.content)
     result["source"] = "llm"
     return result
 
