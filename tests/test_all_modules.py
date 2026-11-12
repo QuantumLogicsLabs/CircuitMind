@@ -263,8 +263,8 @@ class TestExport:
         assert result["status"] == "success"
         netlist = result["spice_netlist"]
         assert "X1 2 3 CC" in netlist
-        assert ".subckt CC 2 3" in netlist
-        assert "Rdummy 2 3 10Meg" in netlist
+        assert ".subckt CC IN OUT" in netlist
+        assert "Rdummy IN OUT 10Meg" in netlist
         assert ".ends CC" in netlist
         assert ".end" in netlist
 
