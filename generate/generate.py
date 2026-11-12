@@ -94,16 +94,27 @@ _COMPILED_RULES = _build_rule_patterns(_RULES)
 
 def generate_with_rules(prompt: str) -> dict:
     p = prompt.lower()
+
+    # Rank matches by keyword length so a specific keyword ("timer", "solar")
+    # wins over a generic one ("led"); strict > keeps the earlier rule on ties.
+    best_rule = None
+    best_score = 0
     for pattern, name, components, connections, description in _COMPILED_RULES:
-        if pattern.search(p):
-            return {
-                "circuit_name": name,
-                "components":   components,
-                "connections":  connections,
-                "confidence":   "high",
-                "description":  description,
-                "source":       "rule-based",
-            }
+        match = max(pattern.finditer(p), key=lambda m: len(m.group(0)), default=None)
+        if match is not None and len(match.group(0)) > best_score:
+            best_rule = (name, components, connections, description)
+            best_score = len(match.group(0))
+
+    if best_rule is not None:
+        name, components, connections, description = best_rule
+        return {
+            "circuit_name": name,
+            "components":   components,
+            "connections":  connections,
+            "confidence":   "high",
+            "description":  description,
+            "source":       "rule-based",
+        }
     return {
         "circuit_name": "Unknown",
         "components":   [],
