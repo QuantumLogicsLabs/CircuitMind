@@ -29,6 +29,10 @@ except ImportError:
 # ── Input Validation ───────────────────────────────────────────────────────────
 
 def validate_input(prompt: str) -> str:
+    if prompt is None:
+        raise ValueError("Input cannot be empty. Try: 'make me a LED circuit'")
+    if not isinstance(prompt, str):
+        raise ValueError("Input must be text. Try: 'make me a LED circuit'")
     if not prompt or len(prompt.strip()) == 0:
         raise ValueError("Input cannot be empty. Try: 'make me a LED circuit'")
     if len(prompt.strip()) < 3:
