@@ -114,18 +114,24 @@ VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
+def _component_key(component: str) -> str:
+    """Normalise a component name for map lookups ("DC Motor" -> "dc_motor")."""
+    return str(component).strip().lower().replace(" ", "_").replace("-", "_")
+
+
 def generate_spice(circuit_name: str, components: list) -> str:
     lines    = [circuit_name]
     counters: dict = {}
-    
-    comps = [c for c in components if c.lower() not in ("ground", "gnd")]
-    
+
+    comps = [c for c in components if _component_key(c) not in ("ground", "gnd")]
+
     # Track defined subcircuits by subcircuit name: value -> (node1, node2)
     defined_subckts = {}
-    
+
     for i, component in enumerate(comps):
-        symbol = COMPONENT_MAP.get(component, "X")
-        value  = COMPONENT_VALUES.get(component, "?")
+        key    = _component_key(component)
+        symbol = COMPONENT_MAP.get(key, "X")
+        value  = COMPONENT_VALUES.get(key, "?")
         counters[symbol] = counters.get(symbol, 0) + 1
         name = f"{symbol}{counters[symbol]}"
         
@@ -401,8 +407,11 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
     if not json_input or not json_input.strip():
         return {"status": "error", "message": "Input is empty."}
 
-    if export_format not in VALID_FORMATS:
-        return {"status": "error", "message": f"Invalid format. Use one of: {', '.join(VALID_FORMATS)}."}
+    # Accept " SPICE ", "Gate_JSON", etc. — the UI has supplied mixed case.
+    normalised_format = str(export_format or "").strip().lower()
+    if normalised_format not in VALID_FORMATS:
+        options = ", ".join(sorted(VALID_FORMATS))
+        return {"status": "error", "message": f"Invalid format. Use one of: {options}."}
 
     try:
         data = json.loads(json_input)
@@ -416,9 +425,9 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
     components  = data["components"]
     connections = data["connections"]
 
-    logger.info(f"Exporting '{name}' as {export_format}")
+    logger.info(f"Exporting '{name}' as {normalised_format}")
 
-    if export_format == "spice":
+    if normalised_format == "spice":
         spice = generate_spice(name, components)
         return {
             "status":        "success",
@@ -429,7 +438,7 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
             "spice_netlist": spice,
         }
 
-    if export_format == "svg":
+    if normalised_format == "svg":
         try:
             svg_markup = generate_svg(name, components)
         except RuntimeError as e:
