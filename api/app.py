@@ -125,11 +125,16 @@ class ExportRequest(BaseModel):
 
     @field_validator("export_format")
     @classmethod
-    def valid_format(cls, v: str) -> str:
-        allowed = {"spice", "svg", "gate_json"}
-        if v not in allowed:
-            raise ValueError(f"export_format must be one of {allowed}")
-        return v
+    def valid_format(cls, v: Optional[str]) -> str:
+        # Mirror export_module: trim/case-fold the value, default an explicit
+        # null to spice, and list the supported formats in a stable order.
+        if v is None:
+            return "spice"
+        normalised = v.strip().lower()
+        allowed = ("gate_json", "spice", "svg")
+        if normalised not in allowed:
+            raise ValueError(f"export_format must be one of: {', '.join(allowed)}")
+        return normalised
 
 class HintRequest(BaseModel):
     request_type: str = "hint"
