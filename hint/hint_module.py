@@ -251,6 +251,27 @@ def _hint_with_rules(payload: dict) -> str:
             f"{len(outputs)}. Add the missing ones and label them to match."
         )
 
+    def _labels(gate_list):
+        return {
+            str(g.get("label", "")).strip().upper()
+            for g in gate_list
+            if str(g.get("label", "")).strip()
+        }
+
+    expected_inputs = {str(name).strip().upper() for name in inputs}
+    expected_outputs = {str(name).strip().upper() for name in outputs}
+    mismatched = sorted(
+        expected_inputs.symmetric_difference(_labels(input_gates))
+        | expected_outputs.symmetric_difference(_labels(output_gates))
+    )
+    if mismatched:
+        return (
+            f"Your port labels don't match the problem: {', '.join(mismatched)}. "
+            "Rename the INPUT and OUTPUT gates exactly as the problem names "
+            f"them ({', '.join(sorted(expected_inputs | expected_outputs))}) so "
+            "each truth-table row can be graded."
+        )
+
     wired_ids = {w.get("fromId") for w in wires} | {w.get("toId") for w in wires}
     floating = [g for g in gates if g.get("id") not in wired_ids]
     if floating:
