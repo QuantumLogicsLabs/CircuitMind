@@ -161,19 +161,22 @@ def check_capacitor_polarity(components: list, connections: list) -> str | None:
 
     for path in _parse_connections(connections):
         for node in path:
+            raw = node.strip().lower()
             n = _normalize(node)
 
             # Only inspect capacitor nodes
             if "capacitor" not in n:
                 continue
 
-            if any(keyword in n for keyword in POSITIVE_KEYWORDS):
+            # Terminal markers must be read from the raw text: _normalize
+            # rewrites '-' to '_', which would hide a 'capacitor-' terminal.
+            if any(keyword in raw for keyword in POSITIVE_KEYWORDS):
                 capacitor_polarity["positive"] = True
 
             if (
-                "-" in n
-                or "negative" in n
-                or "neg" in n
+                "-" in raw
+                or "negative" in raw
+                or "neg" in raw
             ):
                 capacitor_polarity["negative"] = True
 
