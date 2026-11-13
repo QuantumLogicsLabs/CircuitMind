@@ -419,6 +419,17 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
     logger.info(f"Exporting '{name}' as {export_format}")
 
     if export_format == "spice":
+        exportable = [
+            c for c in components
+            if str(c).strip().lower() not in ("ground", "gnd")
+        ]
+        if not exportable:
+            return {
+                "status":  "error",
+                "message": "SPICE export needs at least one non-ground "
+                           "component; this circuit only contains ground nodes.",
+            }
+
         spice = generate_spice(name, components)
         return {
             "status":        "success",
