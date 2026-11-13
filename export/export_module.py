@@ -241,12 +241,18 @@ _FRIENDLY_LABELS = {
 }
 
 
+# Control inputs on arithmetic/selection circuits and their data outputs.
+_CONTROL_INPUTS = {"cin", "bin", "sel"}
+_DECODER_OUTPUTS = {f"y{i}" for i in range(8)}
+
+
 def _classify_component(component: str, index: int, total: int) -> tuple[str, int, bool]:
     comp_lower = component.lower()
     if (
         comp_lower.startswith("input")
         or comp_lower.startswith("in_")
         or comp_lower in ("battery", "power_supply", "solar_cell")
+        or comp_lower in _CONTROL_INPUTS
         or (index == 0 and total <= 3)
     ):
         return "INPUT", 0, True
@@ -255,6 +261,7 @@ def _classify_component(component: str, index: int, total: int) -> tuple[str, in
         or comp_lower.endswith("_output")
         or comp_lower.endswith("_out")
         or comp_lower in ("cout", "sum", "carry", "led", "lamp", "buzzer")
+        or comp_lower in _DECODER_OUTPUTS
         or (index == total - 1 and total <= 3)
     ):
         return "OUTPUT", 1, False
