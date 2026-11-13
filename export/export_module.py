@@ -10,6 +10,7 @@ Converts circuit JSON into:
 
 import json
 import logging
+import re
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 
@@ -241,6 +242,19 @@ _FRIENDLY_LABELS = {
 }
 
 
+# Gate names must be standalone tokens: 'and_gt', 'or1' and 'xnor2' are
+# gates, but 'resistor', 'motor' and 'capacitor' merely end in 'or'.
+_GATE_TOKEN_PATTERNS = (
+    ("XNOR", re.compile(r"(?<![a-z0-9])xnor(?![a-z])")),
+    ("XOR",  re.compile(r"(?<![a-z0-9])xor(?![a-z])")),
+    ("NAND", re.compile(r"(?<![a-z0-9])nand(?![a-z])")),
+    ("NOR",  re.compile(r"(?<![a-z0-9])nor(?![a-z])")),
+    ("AND",  re.compile(r"(?<![a-z0-9])and(?![a-z])")),
+    ("OR",   re.compile(r"(?<![a-z0-9])or(?![a-z])")),
+    ("NOT",  re.compile(r"(?<![a-z0-9])not(?![a-z])")),
+)
+
+
 def _classify_component(component: str, index: int, total: int) -> tuple[str, int, bool]:
     comp_lower = component.lower()
     if (
@@ -259,23 +273,13 @@ def _classify_component(component: str, index: int, total: int) -> tuple[str, in
     ):
         return "OUTPUT", 1, False
 
-    comp_upper = component.upper()
-    if "XNOR" in comp_upper:
-        gate_type = "XNOR"
-    elif "XOR" in comp_upper:
-        gate_type = "XOR"
-    elif "NAND" in comp_upper:
-        gate_type = "NAND"
-    elif "NOR" in comp_upper:
-        gate_type = "NOR"
-    elif "AND" in comp_upper:
-        gate_type = "AND"
-    elif "OR" in comp_upper:
-        gate_type = "OR"
-    elif "NOT" in comp_upper:
-        gate_type = "NOT"
-    else:
-        gate_type = comp_upper
+    gate_type = None
+    for name, pattern in _GATE_TOKEN_PATTERNS:
+        if pattern.search(comp_lower):
+            gate_type = name
+            break
+    if gate_type is None:
+        gate_type = component.upper()
     return gate_type, (1 if gate_type == "NOT" else 2), True
 
 
