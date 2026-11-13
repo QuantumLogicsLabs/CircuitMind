@@ -58,7 +58,8 @@ _RULES = [
     (["demultiplexer", "demux"],                "1-to-2 Demultiplexer",    ["input_din", "sel", "not", "and1", "and2", "output_y0", "output_y1"], ["input_din -> and1 -> output_y0", "sel -> not -> and1", "input_din -> and2 -> output_y1", "sel -> and2"], "1-to-2 demultiplexer circuit"),
     (["decoder"],                               "2-to-4 Decoder",          ["input_a", "input_b", "not_a", "not_b", "and0", "and1", "and2", "and3", "y0", "y1", "y2", "y3"], ["input_a -> not_a -> and0 -> y0", "input_b -> not_b -> and0", "input_a -> and1 -> y1", "input_b -> not_b -> and1", "input_a -> not_a -> and2 -> y2", "input_b -> and2", "input_a -> and3 -> y3", "input_b -> and3"], "2-to-4 line decoder circuit"),
     (["comparator"],                            "1-Bit Comparator",        ["input_a", "input_b", "not_a", "not_b", "xnor", "and_gt", "and_lt", "eq_out", "gt_out", "lt_out"], ["input_a -> xnor -> eq_out", "input_b -> xnor", "input_a -> and_gt -> gt_out", "input_b -> not_b -> and_gt", "input_a -> not_a -> and_lt -> lt_out", "input_b -> and_lt"], "1-bit magnitude comparator"),
-    (["xor", "xnor"],                           "XOR / XNOR Circuit",       ["input_a", "input_b", "xor", "output"],                ["input_a -> xor -> output", "input_b -> xor"], "2-input XOR gate circuit"),
+    (["xnor"],                                  "XNOR Gate Circuit",        ["input_a", "input_b", "xnor", "output"],               ["input_a -> xnor -> output", "input_b -> xnor"], "2-input XNOR gate circuit (equality detector)"),
+    (["xor"],                                   "XOR Gate Circuit",         ["input_a", "input_b", "xor", "output"],                ["input_a -> xor -> output", "input_b -> xor"], "2-input XOR gate circuit (inequality detector)"),
     (["logic gate", "logic circuit"],           "Logic Gate Circuit",       ["input_a", "input_b", "and", "or", "output"],          ["input_a -> and -> or -> output", "input_b -> and", "input_b -> or"], "Combinational logic gate circuit"),
     # ── Analog / IC Circuits ─────────────────────────────────────────────────────
     (["led", "light"],                         "LED Circuit",              ["battery", "resistor", "led"],                          ["battery -> resistor -> led"],                        "Basic LED circuit with current-limiting resistor"),
@@ -94,16 +95,27 @@ _COMPILED_RULES = _build_rule_patterns(_RULES)
 
 def generate_with_rules(prompt: str) -> dict:
     p = prompt.lower()
+
+    # Rank matches by keyword length so a specific keyword ("timer", "solar")
+    # wins over a generic one ("led"); strict > keeps the earlier rule on ties.
+    best_rule = None
+    best_score = 0
     for pattern, name, components, connections, description in _COMPILED_RULES:
-        if pattern.search(p):
-            return {
-                "circuit_name": name,
-                "components":   components,
-                "connections":  connections,
-                "confidence":   "high",
-                "description":  description,
-                "source":       "rule-based",
-            }
+        match = max(pattern.finditer(p), key=lambda m: len(m.group(0)), default=None)
+        if match is not None and len(match.group(0)) > best_score:
+            best_rule = (name, components, connections, description)
+            best_score = len(match.group(0))
+
+    if best_rule is not None:
+        name, components, connections, description = best_rule
+        return {
+            "circuit_name": name,
+            "components":   components,
+            "connections":  connections,
+            "confidence":   "high",
+            "description":  description,
+            "source":       "rule-based",
+        }
     return {
         "circuit_name": "Unknown",
         "components":   [],
