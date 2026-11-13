@@ -73,7 +73,8 @@ def check_short_circuit(connections: list) -> list:
     errors = []
 
     def _is_power(node: str) -> bool:
-        return _normalize(node) in POWER_SOURCES
+        # Resolve aliases such as vcc/vdd so supply-rail labels count as power.
+        return _fuzzy_match(_normalize(node)) in POWER_SOURCES
 
     def _is_ground(node: str) -> bool:
         n = _normalize(node)
