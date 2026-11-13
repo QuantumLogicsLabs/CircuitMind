@@ -153,6 +153,10 @@ def _identify_circuit(payload: dict) -> str | None:
 
     if input_count == 2 and output_count == 2:
         if "XOR" in logic_types and "AND" in logic_types:
+            # The half subtractor adds a NOT to invert A for the borrow term;
+            # without it the XOR/AND pair is the half adder.
+            if "NOT" in logic_types:
+                return "Half Subtractor"
             return "Half Adder"
 
     return None
