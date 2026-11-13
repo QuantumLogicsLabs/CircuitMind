@@ -10,10 +10,15 @@ Converts circuit JSON into:
 
 import json
 import logging
+import re
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
+
+# Accept the arrow styles used across the app: ASCII "->", the unicode arrow
+# rendered by the export previews, em/en dashes and the "a -- b" form.
+_CONNECTION_SEPARATOR = re.compile(r"\s*(?:->|→|—|–|--)\s*")
 
 # ── Component maps ─────────────────────────────────────────────────────────────
 
@@ -337,6 +342,10 @@ def _layout_gates(gates: list, wires: list) -> None:
             by_id[g["id"]]["y"] = ORIGIN_Y + y_offset + i * LAYER_Y_GAP
 
 
+def _split_connection(conn: str) -> list[str]:
+    return [part.strip() for part in _CONNECTION_SEPARATOR.split(conn) if part.strip()]
+
+
 def generate_gate_json(circuit_name: str, components: list, connections: list) -> dict:
     gates  = []
     wires  = []
@@ -364,13 +373,19 @@ def generate_gate_json(circuit_name: str, components: list, connections: list) -
 
     wire_id = 0
     target_pin_indices = {}
+    gates_by_id = {g["id"]: g for g in gates}
     for conn in connections:
-        parts = [p.strip() for p in conn.split("->")]
+        parts = _split_connection(conn)
         for j in range(len(parts) - 1):
             from_id = next((g["id"] for g in gates if g["label"] == parts[j].upper()), None)
             to_id   = next((g["id"] for g in gates if g["label"] == parts[j + 1].upper()), None)
             if from_id is not None and to_id is not None:
                 to_index = target_pin_indices.get(to_id, 0)
+                target = gates_by_id[to_id]
+                # A gate only has as many input pins as it declares; extra
+                # connections would reference pins that do not exist.
+                if target["type"] == "INPUT" or to_index >= target["inputs"]:
+                    continue
                 wires.append({"id": wire_id, "fromId": from_id, "toId": to_id, "toIndex": to_index})
                 target_pin_indices[to_id] = to_index + 1
                 wire_id += 1
