@@ -153,6 +153,19 @@ def generate_spice(circuit_name: str, components: list) -> str:
 
 # ── SVG generator ──────────────────────────────────────────────────────────────
 
+# Ground is a net, not a part: it must never be drawn as a component. Circuits
+# use several spellings for it, so filter by normalized alias.
+_GROUND_ALIASES = {"ground", "gnd", "0v", "v-", "v_", "negative", "common", "earth"}
+
+
+def _is_ground_alias(component_key: str) -> bool:
+    return (
+        component_key in _GROUND_ALIASES
+        or component_key.startswith("gnd")
+        or component_key.startswith("ground")
+    )
+
+
 def generate_svg(circuit_name: str, components: list) -> str:
     """Generate an SVG circuit schematic and return SVG markup string."""
     try:
@@ -191,7 +204,7 @@ def generate_svg(circuit_name: str, components: list) -> str:
         return name.strip().lower().replace(" ", "_").replace("-", "_")
 
     normalized = [_norm(c) for c in components]
-    drawable   = [c for c in normalized if c != "ground"]
+    drawable   = [c for c in normalized if not _is_ground_alias(c)]
 
     if not drawable:
         raise RuntimeError("No drawable components found in the circuit.")
