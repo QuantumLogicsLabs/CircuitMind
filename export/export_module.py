@@ -373,6 +373,7 @@ def generate_gate_json(circuit_name: str, components: list, connections: list) -
 
     wire_id = 0
     target_pin_indices = {}
+    seen_wires: set = set()
     gates_by_id = {g["id"]: g for g in gates}
     for conn in connections:
         parts = _split_connection(conn)
@@ -380,12 +381,18 @@ def generate_gate_json(circuit_name: str, components: list, connections: list) -
             from_id = next((g["id"] for g in gates if g["label"] == parts[j].upper()), None)
             to_id   = next((g["id"] for g in gates if g["label"] == parts[j + 1].upper()), None)
             if from_id is not None and to_id is not None:
+                # A repeated connection must not claim a second input pin:
+                # doing so shifted later wires onto pins that do not exist.
+                wire_key = (from_id, to_id)
+                if wire_key in seen_wires:
+                    continue
                 to_index = target_pin_indices.get(to_id, 0)
                 target = gates_by_id[to_id]
                 # A gate only has as many input pins as it declares; extra
                 # connections would reference pins that do not exist.
                 if target["type"] == "INPUT" or to_index >= target["inputs"]:
                     continue
+                seen_wires.add(wire_key)
                 wires.append({"id": wire_id, "fromId": from_id, "toId": to_id, "toIndex": to_index})
                 target_pin_indices[to_id] = to_index + 1
                 wire_id += 1
