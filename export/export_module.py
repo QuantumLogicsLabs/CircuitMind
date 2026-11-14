@@ -153,6 +153,32 @@ def generate_spice(circuit_name: str, components: list) -> str:
 
 # ── SVG generator ──────────────────────────────────────────────────────────────
 
+# Acronyms and model names that naive .title() casing would mangle ("Led",
+# "Ldr", "Dc Motor", "555 Timer" is fine but "Op_Amp" -> "Op Amp" is not).
+_DISPLAY_LABELS = {
+    "led":       "LED",
+    "rgb_led":   "RGB LED",
+    "ir_led":    "IR LED",
+    "ldr":       "LDR",
+    "lcd":       "LCD",
+    "ic":        "IC",
+    "pcb":       "PCB",
+    "dc_motor":  "DC Motor",
+    "ac_motor":  "AC Motor",
+    "555_timer": "555 Timer",
+    "op_amp":    "Op-Amp",
+    "opamp":     "Op-Amp",
+    "usb":       "USB",
+}
+
+
+def _display_label(component_key: str) -> str:
+    """Human-readable schematic label for a normalized component key."""
+    if component_key in _DISPLAY_LABELS:
+        return _DISPLAY_LABELS[component_key]
+    return component_key.replace("_", " ").title()
+
+
 def generate_svg(circuit_name: str, components: list) -> str:
     """Generate an SVG circuit schematic and return SVG markup string."""
     try:
@@ -201,7 +227,7 @@ def generate_svg(circuit_name: str, components: list) -> str:
 
     first_elem = None
     for i, comp in enumerate(drawable):
-        label    = comp.replace("_", " ").title()
+        label    = _display_label(comp)
         elem_cls = SVG_MAP.get(comp, elm.RBox)
         elem     = d.add(elem_cls().right().label(label, loc="top"))
         if i == 0:
