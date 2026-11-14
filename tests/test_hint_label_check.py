@@ -52,6 +52,17 @@ def test_matching_labels_reach_the_generic_hint():
     assert "counts look reasonable" in hint
 
 
+def test_no_declared_ports_skips_label_hint():
+    hint = _hint_with_rules({
+        "inputs": [],
+        "outputs": [],
+        "gates": _gates([("A", "INPUT"), ("XOR1", "XOR")]),
+        "wires": [],
+    })
+
+    assert "labels don't match" not in hint
+
+
 def test_labels_compare_case_insensitively():
     hint = _hint_with_rules({
         "inputs": ["a", "b"],

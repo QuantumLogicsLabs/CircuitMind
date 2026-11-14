@@ -264,7 +264,8 @@ def _hint_with_rules(payload: dict) -> str:
         expected_inputs.symmetric_difference(_labels(input_gates))
         | expected_outputs.symmetric_difference(_labels(output_gates))
     )
-    if mismatched:
+    # Without declared ports there is nothing to rename to; fall through.
+    if mismatched and (expected_inputs or expected_outputs):
         return (
             f"Your port labels don't match the problem: {', '.join(mismatched)}. "
             "Rename the INPUT and OUTPUT gates exactly as the problem names "
