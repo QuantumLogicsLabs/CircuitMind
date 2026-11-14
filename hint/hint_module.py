@@ -282,6 +282,22 @@ def _hint_with_rules(payload: dict) -> str:
             "affect the output. Wire it in."
         )
 
+    # The submitted attempt tells us exactly which rows are wrong; without this
+    # the fallback only ever returns a generic "walk the truth table" message.
+    failing_rows = (payload.get("last_result") or {}).get("failing_rows") or []
+    if failing_rows:
+        count = len(failing_rows)
+        plural = "row" if count == 1 else "rows"
+        try:
+            sample = json.dumps(failing_rows[0], sort_keys=True)
+        except (TypeError, ValueError):
+            sample = str(failing_rows[0])
+        return (
+            f"{count} truth-table {plural} still fail — the first one is {sample}. "
+            "Replay exactly that input combination through your gates and compare "
+            "each gate's output against what the row expects."
+        )
+
     return (
         "Gate and wire counts look reasonable — walk through the truth table row "
         "by row and check whether your gate types (AND/OR/XOR/NOT) match what "
