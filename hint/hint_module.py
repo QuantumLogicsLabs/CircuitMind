@@ -77,12 +77,22 @@ def _build_user_prompt(payload: dict) -> str:
     truth_table = payload.get("truth_table", [])
     last_result = payload.get("last_result") or {}
 
+    shown_rows = truth_table[:16]
+    total_rows = len(truth_table)
+    if total_rows > len(shown_rows):
+        table_heading = (
+            f"Truth table (JSON, first {len(shown_rows)} of {total_rows} rows — "
+            "remaining rows omitted)"
+        )
+    else:
+        table_heading = f"Truth table (JSON, {total_rows} rows)"
+
     parts = [
         f"Problem: {payload.get('problem_title', 'Untitled problem')}",
         f"Description: {payload['problem_description']}" if payload.get("problem_description") else "",
         f"Inputs: {', '.join(inputs)}",
         f"Outputs: {', '.join(outputs)}",
-        f"Truth table (JSON, first 16 rows): {json.dumps(truth_table[:16])}",
+        f"{table_heading}: {json.dumps(shown_rows)}",
         "",
         "Student's current circuit:",
         _summarize_circuit(payload.get("gates", []), payload.get("wires", [])),
