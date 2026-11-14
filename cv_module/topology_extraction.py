@@ -135,11 +135,14 @@ def image_to_circuit_json(image_path: str, model_path: str = "./cv_module/models
     extractor             = CircuitTopologyExtractor()
     components, conns     = extractor.extract_topology(results)
 
+    # Report what was actually detected. Inventing a battery/resistor/LED
+    # circuit for an empty image hides detection failures from every
+    # downstream consumer (diagnose, explain, export).
     return {
         "circuit_name": "Detected_Circuit",
-        "components":   [c.type for c in components] if components else ["battery", "resistor", "led"],
-        "connections":  [f"{c.from_component} -> {c.to_component}" for c in conns]
-                        if conns else ["battery -> resistor", "resistor -> led"],
+        "components":   [c.type for c in components],
+        "connections":  [f"{c.from_component} -> {c.to_component}" for c in conns],
+        "detected":     bool(components),
     }
 
 
@@ -257,7 +260,8 @@ def adapt_netlist_to_schema(raw_netlist: dict) -> dict:
 
     return {
         "circuit_name": "Detected_Circuit",
-        "components":   [c["type"] for c in components] or ["battery", "resistor", "led"],
-        "connections":  simple_connections or ["battery -> resistor", "resistor -> led"],
+        "components":   [c["type"] for c in components],
+        "connections":  simple_connections,
+        "detected":     bool(components),
         "netlist_detail": raw_netlist,  # full pin-level data preserved for advanced use
     }
