@@ -231,6 +231,22 @@ def generate_circuit_netlist(image_path: str, model_path: str) -> str:
     return json.dumps(adapt_netlist_to_schema(raw_netlist), indent=2)
 
 
+def _connection_endpoints(conn) -> tuple[str, str] | None:
+    """Return (from_id, to_id) for a pin-level connection, or None if malformed."""
+    if not isinstance(conn, dict):
+        return None
+    try:
+        from_id = conn["from"]["component"]
+        to_id   = conn["to"]["component"]
+    except (KeyError, TypeError):
+        return None
+    if not isinstance(from_id, str) or not isinstance(to_id, str):
+        return None
+    if not from_id or not to_id:
+        return None
+    return from_id, to_id
+
+
 def adapt_netlist_to_schema(raw_netlist: dict) -> dict:
     """
     Adapter: converts the deeply nested, pin-level netlist produced by the
@@ -246,9 +262,15 @@ def adapt_netlist_to_schema(raw_netlist: dict) -> dict:
 
     seen_pairs: set = set()
     simple_connections: list[str] = []
+    skipped = 0
     for conn in raw_netlist.get("connections", []):
-        from_id = conn["from"]["component"]
-        to_id   = conn["to"]["component"]
+        endpoints = _connection_endpoints(conn)
+        if endpoints is None:
+            # A truncated pin-level record used to raise KeyError here and
+            # take down the whole extraction.
+            skipped += 1
+            continue
+        from_id, to_id = endpoints
         pair_key = tuple(sorted([from_id, to_id]))
         if pair_key in seen_pairs:
             continue
@@ -259,5 +281,6 @@ def adapt_netlist_to_schema(raw_netlist: dict) -> dict:
         "circuit_name": "Detected_Circuit",
         "components":   [c["type"] for c in components] or ["battery", "resistor", "led"],
         "connections":  simple_connections or ["battery -> resistor", "resistor -> led"],
+        "skipped_connections": skipped,
         "netlist_detail": raw_netlist,  # full pin-level data preserved for advanced use
     }
