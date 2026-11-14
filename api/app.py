@@ -142,6 +142,15 @@ class HintRequest(BaseModel):
     wires: list[dict] = []
     last_result: Optional[dict] = None
 
+    @field_validator("request_type")
+    @classmethod
+    def valid_request_type(cls, v: str) -> str:
+        allowed = {"hint", "identify"}
+        normalized = v.strip().lower()
+        if normalized not in allowed:
+            raise ValueError(f"request_type must be one of {sorted(allowed)}")
+        return normalized
+
 # ── HEALTH ───────────────────────────────────────────────────────
 @app.get("/", tags=["health"])
 def root():
