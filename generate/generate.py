@@ -69,6 +69,16 @@ _RULES = [
     (["solar"],                                "Solar Charging Circuit",   ["solar_cell", "diode", "charge_controller", "battery"],["solar_cell -> diode -> charge_controller -> battery"],"Solar panel battery charging circuit"),
     (["555", "ne555", "lm555", "timer"],       "555 Timer Circuit",        ["battery", "555_timer", "resistor", "capacitor", "led"],["battery -> 555_timer -> resistor -> capacitor -> led"],"555 timer astable multivibrator"),
     (["rc", "filter"],                         "RC Filter Circuit",        ["power_supply", "resistor", "capacitor"],              ["power_supply -> resistor -> capacitor -> ground"],    "RC low-pass filter circuit"),
+    # ── Single-gate primitives ───────────────────────────────────────────────────
+    # Token boundaries keep "nand gate"/"nor gate" from matching the AND/OR rules.
+    (["and gate", "and-gate", "and_gate"],      "AND Gate Circuit",         ["input_a", "input_b", "and", "output"],                 ["input_a -> and -> output", "input_b -> and"],        "2-input AND gate circuit"),
+    (["nand gate", "nand-gate", "nand_gate"],   "NAND Gate Circuit",        ["input_a", "input_b", "nand", "output"],                ["input_a -> nand -> output", "input_b -> nand"],      "2-input NAND gate circuit"),
+    (["or gate", "or-gate", "or_gate"],         "OR Gate Circuit",          ["input_a", "input_b", "or", "output"],                  ["input_a -> or -> output", "input_b -> or"],          "2-input OR gate circuit"),
+    (["nor gate", "nor-gate", "nor_gate"],      "NOR Gate Circuit",         ["input_a", "input_b", "nor", "output"],                 ["input_a -> nor -> output", "input_b -> nor"],        "2-input NOR gate circuit"),
+    (["not gate", "not-gate", "not_gate", "inverter"],
+                                                "NOT Gate Circuit",         ["input_a", "not", "output"],                            ["input_a -> not -> output"],                          "Single-input NOT gate (inverter) circuit"),
+    (["buffer gate", "buffer circuit", "buffer"],
+                                                "Buffer Gate Circuit",      ["input_a", "buffer", "output"],                         ["input_a -> buffer -> output"],                       "Single-input buffer circuit"),
 ]
 
 def _build_rule_patterns(rules):
