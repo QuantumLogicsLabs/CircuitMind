@@ -23,6 +23,9 @@ from utils.component_resolver import (
 
 POSITIVE_KEYWORDS   = {"+", "pos", "positive", "anode", "vcc", "v+", "plus"}
 GROUND_KEYWORDS     = {"ground", "gnd", "0v", "v-", "negative", "common"}
+# Graph nodes are normalized ("v-" -> "v_"), so match against normalized
+# ground labels instead of the raw keyword spellings.
+_NORMALIZED_GROUND  = {_normalize(kw) for kw in GROUND_KEYWORDS}
 WIRE_LABELS         = {"wire", "node", "net", "junction", "point", "trace"}
 
 
@@ -78,11 +81,16 @@ def check_short_circuit(connections: list) -> list:
 
     def _is_ground(node: str) -> bool:
         n = _normalize(node)
-        return n in GROUND_KEYWORDS or n.startswith("gnd") or n.startswith("ground")
+        return (
+            n in _NORMALIZED_GROUND
+            or n.startswith("gnd")
+            or n.startswith("ground")
+        )
 
     def _is_load(node: str) -> bool:
         """Return True only for components that act as electrical loads."""
-        return _normalize(node) in LOAD_COMPONENTS
+        # Resolve aliases such as light/lamp so they count as loads too.
+        return _fuzzy_match(_normalize(node)) in LOAD_COMPONENTS
 
     graph: dict = {}
     for path in _parse_connections(connections):
