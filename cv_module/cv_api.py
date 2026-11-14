@@ -80,9 +80,14 @@ async def image_to_circuit(
             },
         )
 
-    except Exception as e:
-        logger.error(f"CV processing failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error processing image: {e}")
+    except Exception:
+        # Full traceback goes to the log; the response must not echo internal
+        # paths or framework messages back to the caller.
+        logger.error("CV processing failed", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing image. Check the server logs for details.",
+        )
 
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -106,8 +111,13 @@ async def batch_process(
             circuit_json = image_to_circuit_json(tmp_path, ACTIVE_MODEL)
             results.append({"filename": image.filename, "success": True, "circuit_data": circuit_json})
 
-        except Exception as e:
-            results.append({"filename": image.filename, "success": False, "error": str(e)})
+        except Exception:
+            logger.error(f"CV processing failed for {image.filename}", exc_info=True)
+            results.append({
+                "filename": image.filename,
+                "success": False,
+                "error": "processing failed; check server logs for details",
+            })
 
         finally:
             if tmp_path and os.path.exists(tmp_path):
