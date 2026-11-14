@@ -181,7 +181,10 @@ def explain(
     _: None = Depends(verify_api_key),
 ):
     logger.info("Explain request received")
-    return explain_circuit(req.circuit_json)
+    result = explain_circuit(req.circuit_json)
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=422, detail=result["error"])
+    return result
 
 
 @app.post("/diagnose", tags=["core"])
@@ -192,7 +195,10 @@ def diagnose(
     _: None = Depends(verify_api_key),
 ):
     logger.info("Diagnose request received")
-    return diagnose_circuit(req.circuit_json)
+    result = diagnose_circuit(req.circuit_json)
+    if isinstance(result, dict) and result.get("error"):
+        raise HTTPException(status_code=422, detail=result["error"])
+    return result
 
 
 @app.post("/export", tags=["core"])
