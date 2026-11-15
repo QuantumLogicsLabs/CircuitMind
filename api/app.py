@@ -81,6 +81,90 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── REQUEST BODY SIZE ────────────────────────────────────────────
+MAX_REQUEST_BODY_BYTES = int(
+    os.environ.get("MAX_REQUEST_BODY_BYTES", str(1024 * 1024))
+)
+
+class BodySizeLimitMiddleware:
+    """Reject request bodies larger than ``max_bytes`` before they are parsed.
+
+    The declared Content-Length is checked up front. When the header is
+    absent (chunked uploads) the body is buffered up to the cap and replayed
+    downstream, so a client cannot bypass the limit by omitting the header.
+    """
+
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        declared = None
+        for name, value in scope["headers"]:
+            if name == b"content-length":
+                try:
+                    declared = int(value)
+                except ValueError:
+                    await self._reject(send, 400, "Invalid Content-Length header.")
+                    return
+                break
+
+        if declared is not None:
+            if declared > self.max_bytes:
+                await self._reject(send, 413, self._message())
+                return
+            await self.app(scope, receive, send)
+            return
+
+        buffered = bytearray()
+        pending = None
+        while True:
+            message = await receive()
+            if message["type"] != "http.request":
+                pending = message
+                break
+            buffered.extend(message.get("body", b""))
+            if len(buffered) > self.max_bytes:
+                await self._reject(send, 413, self._message())
+                return
+            if not message.get("more_body", False):
+                break
+
+        replayed = False
+
+        async def replay_receive():
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return {"type": "http.request", "body": bytes(buffered), "more_body": False}
+            if pending is not None:
+                return pending
+            return await receive()
+
+        await self.app(scope, replay_receive, send)
+
+    def _message(self) -> str:
+        return f"Request body exceeds the {self.max_bytes}-byte limit."
+
+    @staticmethod
+    async def _reject(send, status: int, detail: str):
+        body = json.dumps({"detail": detail}).encode()
+        await send({
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode()),
+            ],
+        })
+        await send({"type": "http.response.body", "body": body})
+
+app.add_middleware(BodySizeLimitMiddleware, max_bytes=MAX_REQUEST_BODY_BYTES)
+
 # ── MIDDLEWARE ───────────────────────────────────────────────────
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
