@@ -1,0 +1,20 @@
+# CircuitMind — API-only dependencies
+# Used by the Vercel serverless deployment (see ../vercel.json) and by
+# `pip install -r api/requirements.txt` for a headless API host.
+# The Streamlit UI and cv_module extras are intentionally excluded.
+
+python-dotenv>=1.0.0
+redis>=5.0.0 # slowapi storage backend for RATE_LIMIT_REDIS_URL
+
+# API framework
+fastapi>=0.111.0
+pydantic>=2.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# LLM generation (optional at runtime: /generate falls back to templates)
+groq>=0.4.0
+
+# SVG export of schematics
+schemdraw>=0.19
