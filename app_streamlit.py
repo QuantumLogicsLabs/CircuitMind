@@ -18,6 +18,7 @@ from generate.generate import generate_circuit as _generate_circuit
 from explain.explain_module import explain_circuit as _explain_circuit
 from diagnose.diagnose_module import diagnose_circuit as _diagnose_circuit
 from export.export_module import export_module as _export_module
+from utils.payload_loader import load_circuit_payload
 
 load_dotenv()
 
@@ -112,12 +113,11 @@ with tab2:
     json_input = st.text_area("Paste circuit JSON", height=250, key="explain")
 
     if st.button("Explain", type="primary"):
-        try:
-            data = json.loads(json_input)
+        data, load_error = load_circuit_payload(json_input)
 
-            if isinstance(data, dict) and "circuit_json" in data:
-                data = data["circuit_json"]
-
+        if load_error:
+            st.error(load_error)
+        else:
             result = explain_circuit(data)
 
             if not result or "error" in result:
@@ -139,9 +139,6 @@ with tab2:
                 for w in result.get("warnings", []):
                     st.warning(w)
 
-        except json.JSONDecodeError as e:
-            st.error(f"Invalid JSON: {e}")
-
 
 # ── TAB 3: DIAGNOSE ────────────────────────────────────────────────────────────
 with tab3:
@@ -149,12 +146,11 @@ with tab3:
     json_input2 = st.text_area("Paste circuit JSON", height=200, key="diag")
 
     if st.button("Diagnose", type="primary"):
-        try:
-            data = json.loads(json_input2)
+        data, load_error = load_circuit_payload(json_input2)
 
-            if isinstance(data, dict) and "circuit_json" in data:
-                data = data["circuit_json"]
-
+        if load_error:
+            st.error(load_error)
+        else:
             result = diagnose_circuit(data)
 
             if not result:
@@ -173,9 +169,6 @@ with tab3:
                     else:
                         st.info(issue)
 
-        except json.JSONDecodeError as e:
-            st.error(f"Invalid JSON: {e}")
-
 
 # ── TAB 4: EXPORT ──────────────────────────────────────────────────────────────
 with tab4:
@@ -185,22 +178,18 @@ with tab4:
     fmt = st.radio("Export Format", ["spice", "svg", "gate_json"], horizontal=True)
 
     if st.button("Export", type="primary"):
-        try:
-            data = json.loads(json_input3)
+        data, load_error = load_circuit_payload(json_input3)
 
-            if isinstance(data, dict) and "circuit_json" in data:
-                data = data["circuit_json"]
-
+        if load_error:
+            st.session_state["export_result"] = {
+                "status": "error",
+                "message": load_error,
+            }
+        else:
             result = export_module(json.dumps(data), export_format=fmt)
 
             st.session_state["export_result"] = result
             st.session_state["export_format"] = fmt
-
-        except json.JSONDecodeError as e:
-            st.session_state["export_result"] = {
-                "status": "error",
-                "message": f"Invalid JSON: {e}",
-            }
 
     if "export_result" in st.session_state:
         result = st.session_state["export_result"]
