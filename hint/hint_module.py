@@ -200,6 +200,21 @@ def _hint_with_rules(payload: dict) -> str:
             "affect the output. Wire it in."
         )
 
+    fed_inputs = {
+        g.get("label", "?")
+        for g in input_gates
+        if g.get("id") in {w.get("toId") for w in wires}
+    }
+    if fed_inputs:
+        names = ", ".join(sorted(fed_inputs))
+        verb = "are" if len(fed_inputs) > 1 else "is"
+        return (
+            f"'{names}' {verb} INPUT gate(s) but something is wired into "
+            f"{'them' if len(fed_inputs) > 1 else 'it'}. INPUT gates drive the "
+            "circuit — nothing should feed into them. Remove that wire and take "
+            "the signal from the INPUT to the logic gate instead."
+        )
+
     return (
         "Gate and wire counts look reasonable — walk through the truth table row "
         "by row and check whether your gate types (AND/OR/XOR/NOT) match what "
