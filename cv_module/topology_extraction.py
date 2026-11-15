@@ -249,11 +249,15 @@ def adapt_netlist_to_schema(raw_netlist: dict) -> dict:
     for conn in raw_netlist.get("connections", []):
         from_id = conn["from"]["component"]
         to_id   = conn["to"]["component"]
-        pair_key = tuple(sorted([from_id, to_id]))
+        # diagnose/explain/export resolve nodes by component name, not by the
+        # pin-level id, so translate before deduplicating.
+        from_name = id_to_type.get(from_id, from_id)
+        to_name   = id_to_type.get(to_id, to_id)
+        pair_key = tuple(sorted([from_name, to_name]))
         if pair_key in seen_pairs:
             continue
         seen_pairs.add(pair_key)
-        simple_connections.append(f"{from_id} -> {to_id}")
+        simple_connections.append(f"{from_name} -> {to_name}")
 
     return {
         "circuit_name": "Detected_Circuit",
