@@ -53,15 +53,18 @@ def _summarize_circuit(gates: list, wires: list) -> str:
     if not gates:
         return "The canvas is empty — no gates placed yet."
 
+    # Index gates once instead of scanning the whole gate list per wire.
+    by_id = {}
     gate_lines = []
     for g in gates:
+        by_id.setdefault(g.get("id"), g)
         name = g.get("label") or f"gate{g.get('id')}"
         gate_lines.append(f"- {name}: type={g.get('type')}")
 
     wire_lines = []
     for w in wires or []:
-        from_g = next((g for g in gates if g.get("id") == w.get("fromId")), None)
-        to_g = next((g for g in gates if g.get("id") == w.get("toId")), None)
+        from_g = by_id.get(w.get("fromId"))
+        to_g = by_id.get(w.get("toId"))
         if from_g and to_g:
             wire_lines.append(f"- {from_g.get('label')} -> {to_g.get('label')}")
 
