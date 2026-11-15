@@ -5,6 +5,11 @@ RUN adduser --disabled-password --no-create-home appuser
 
 WORKDIR /app
 
+# Flush logs immediately (no block buffering under uvicorn) and keep the
+# image free of __pycache__ directories.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
 # Install dependencies first (layer caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
