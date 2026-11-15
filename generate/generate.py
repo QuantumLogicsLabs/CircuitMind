@@ -68,7 +68,7 @@ _RULES = [
     (["temperature", "sensor"],                "Temperature Sensor",       ["battery", "thermistor", "resistor", "microcontroller"],["battery -> thermistor -> resistor -> microcontroller"],"Temperature sensing circuit using thermistor"),
     (["solar"],                                "Solar Charging Circuit",   ["solar_cell", "diode", "charge_controller", "battery"],["solar_cell -> diode -> charge_controller -> battery"],"Solar panel battery charging circuit"),
     (["555", "ne555", "lm555", "timer"],       "555 Timer Circuit",        ["battery", "555_timer", "resistor", "capacitor", "led"],["battery -> 555_timer -> resistor -> capacitor -> led"],"555 timer astable multivibrator"),
-    (["rc", "filter"],                         "RC Filter Circuit",        ["power_supply", "resistor", "capacitor"],              ["power_supply -> resistor -> capacitor -> ground"],    "RC low-pass filter circuit"),
+    (["rc", "filter"],                         "RC Filter Circuit",        ["power_supply", "resistor", "capacitor", "ground"],    ["power_supply -> resistor -> capacitor -> ground"],    "RC low-pass filter circuit"),
 ]
 
 def _build_rule_patterns(rules):
