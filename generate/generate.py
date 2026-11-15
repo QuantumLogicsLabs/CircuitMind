@@ -29,13 +29,14 @@ except ImportError:
 # ── Input Validation ───────────────────────────────────────────────────────────
 
 def validate_input(prompt: str) -> str:
-    if not prompt or len(prompt.strip()) == 0:
+    clean = prompt.strip()
+    if not clean:
         raise ValueError("Input cannot be empty. Try: 'make me a LED circuit'")
-    if len(prompt.strip()) < 3:
+    if len(clean) < 3:
         raise ValueError("Input too short. Try: 'make me a LED circuit'")
-    if len(prompt) > 1000:
+    if len(clean) > 1000:
         raise ValueError("Input too long. Keep it under 1000 characters.")
-    return prompt.strip()
+    return clean
 
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
