@@ -190,7 +190,7 @@ with open('circuit.png', 'rb') as f:
 ### Day 1: Setup & Data Collection
 ```bash
 # 1. Install dependencies
-pip install -r requirements_cv.txt
+pip install -r cv_requirements.txt
 
 # 2. Generate synthetic dataset
 python cv_module/dataset_preparation.py
