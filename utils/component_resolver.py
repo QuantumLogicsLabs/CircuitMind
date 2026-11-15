@@ -169,12 +169,25 @@ _ALIASES = {
 }
 
 
+def _singular_forms(name: str):
+    """Yield the name followed by its plausible singular forms."""
+    yield name
+    if name.endswith("ies") and len(name) > 3:
+        yield name[:-3] + "y"
+    if name.endswith("es") and len(name) > 2:
+        yield name[:-2]
+    if name.endswith("s") and len(name) > 1:
+        yield name[:-1]
+
+
 def _fuzzy_match(name: str) -> str:
     """Resolve a component name to its canonical COMPONENT_DB key."""
-    if name in COMPONENT_DB:
-        return name
-    if name in _ALIASES:
-        return _ALIASES[name]
+    for candidate in _singular_forms(name):
+        if candidate in COMPONENT_DB:
+            return candidate
+    for candidate in _singular_forms(name):
+        if candidate in _ALIASES:
+            return _ALIASES[candidate]
     # Substring: find canonical names contained within the input
     matches = [canon for canon in COMPONENT_DB if canon in name]
     if matches:
