@@ -59,4 +59,4 @@ def test_unknown_component_ids_fall_back_to_the_id():
              "to": {"component": "GHOST_9", "pin": "terminal_1"}}
         ],
     })
-    assert adapted["connections"] == ["GHOST_9 -> resistor"]
+    assert adapted["connections"] == ["resistor -> GHOST_9"]
