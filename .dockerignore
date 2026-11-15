@@ -1,0 +1,59 @@
+# Build context exclusions for the CircuitMind API image.
+# The Dockerfile runs `COPY . .`, so keep VCS data, local envs, test caches and
+# large/generated assets out of the image and the build context.
+
+# ── VCS / CI ───────────────────────────────────────────────────────────────────
+.git
+.github
+.gitignore
+.dockerignore
+
+# ── Secrets ────────────────────────────────────────────────────────────────────
+.env
+.env.*
+*.env
+
+# ── Python artefacts ───────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Editors / OS ───────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Non-runtime assets ─────────────────────────────────────────────────────────
+website/
+Backend Boolforge/
+Frontend Boolforge/
+cv_module/dataset/
+cv_module/models/*.pt
+node_modules/
+
+# ── Generated outputs / scratch files ─────────────────────────────────────────
+*.log
+circuit_diagram.svg
+circuit_output.svg
+circuit_output.json
+circuit_output.sp
+circuit_output.txt
+circuit_gate.json
+generate/output.json
+test_results.json
+diagnose/test_results.json
+explain/test_results.json
+export/TestResults.json
+prompt.txt
