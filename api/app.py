@@ -116,12 +116,48 @@ class GenerateRequest(BaseModel):
             raise ValueError("prompt must be under 1000 characters")
         return v.strip()
 
+# Circuit payloads are relayed into the explain/diagnose/export modules, which
+# walk every component and connection. Bound the lists so a single request
+# cannot force quadratic work or huge responses.
+CIRCUIT_MAX_COMPONENTS  = 256
+CIRCUIT_MAX_CONNECTIONS = 512
+
+
+def _validate_circuit_payload(data: dict) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("circuit_json must be a JSON object")
+
+    components = data.get("components", [])
+    connections = data.get("connections", [])
+
+    if not isinstance(components, list):
+        raise ValueError("'components' must be a list")
+    if not isinstance(connections, list):
+        raise ValueError("'connections' must be a list")
+    if len(components) > CIRCUIT_MAX_COMPONENTS:
+        raise ValueError(f"'components' is limited to {CIRCUIT_MAX_COMPONENTS} entries")
+    if len(connections) > CIRCUIT_MAX_CONNECTIONS:
+        raise ValueError(f"'connections' is limited to {CIRCUIT_MAX_CONNECTIONS} entries")
+
+    return data
+
+
 class CircuitRequest(BaseModel):
     circuit_json: dict
+
+    @field_validator("circuit_json")
+    @classmethod
+    def bounded_circuit(cls, v: dict) -> dict:
+        return _validate_circuit_payload(v)
 
 class ExportRequest(BaseModel):
     circuit_json: dict
     export_format: Optional[str] = "spice"
+
+    @field_validator("circuit_json")
+    @classmethod
+    def bounded_circuit(cls, v: dict) -> dict:
+        return _validate_circuit_payload(v)
 
     @field_validator("export_format")
     @classmethod
