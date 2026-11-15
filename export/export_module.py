@@ -416,6 +416,11 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
     components  = data["components"]
     connections = data["connections"]
 
+    # An empty component list produced a "successful" title-only netlist / blank
+    # schematic / empty gate graph, which hides the caller's mistake.
+    if not components:
+        return {"status": "error", "message": "Circuit has no components to export."}
+
     logger.info(f"Exporting '{name}' as {export_format}")
 
     if export_format == "spice":
