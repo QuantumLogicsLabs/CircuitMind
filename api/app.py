@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 # ── RATE LIMITING ───────────────────────────────────────────────
@@ -131,15 +131,23 @@ class ExportRequest(BaseModel):
             raise ValueError(f"export_format must be one of {allowed}")
         return v
 
+# Hint payloads come straight from the client and are echoed into prompts and
+# rule checks, so keep them bounded. These caps are far above any real Digital
+# Logic Studio circuit (a 4-bit ALU graph is only a few dozen gates).
+HINT_MAX_IO        = 64
+HINT_MAX_ITEMS     = 512
+HINT_MAX_TITLE     = 200
+HINT_MAX_DESCRIPTION = 4000
+
 class HintRequest(BaseModel):
     request_type: str = "hint"
-    problem_title: str = ""
-    problem_description: Optional[str] = ""
-    inputs: list[str] = []
-    outputs: list[str] = []
-    truth_table: list[dict] = []
-    gates: list[dict] = []
-    wires: list[dict] = []
+    problem_title: str = Field(default="", max_length=HINT_MAX_TITLE)
+    problem_description: Optional[str] = Field(default="", max_length=HINT_MAX_DESCRIPTION)
+    inputs: list[str] = Field(default_factory=list, max_length=HINT_MAX_IO)
+    outputs: list[str] = Field(default_factory=list, max_length=HINT_MAX_IO)
+    truth_table: list[dict] = Field(default_factory=list, max_length=HINT_MAX_ITEMS)
+    gates: list[dict] = Field(default_factory=list, max_length=HINT_MAX_ITEMS)
+    wires: list[dict] = Field(default_factory=list, max_length=HINT_MAX_ITEMS)
     last_result: Optional[dict] = None
 
 # ── HEALTH ───────────────────────────────────────────────────────
