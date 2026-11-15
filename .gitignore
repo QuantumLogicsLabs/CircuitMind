@@ -22,6 +22,14 @@ venv/
 dist/
 build/
 
+# Test / type-checker / linter caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
 # ─────────────────────────────────────────────
 # IDE / Editors
 # ─────────────────────────────────────────────
