@@ -1,6 +1,23 @@
+# Secrets
+.env
+*.env
+
+# Non-API code and assets
 website/
 cv_module/
 data/
 tests/
-__pycache__/
 *.md
+
+# Python caches and local environments
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# VCS metadata
+.git/
+.gitignore
