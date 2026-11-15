@@ -114,8 +114,25 @@ VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
+_DEFAULT_SPICE_TITLE = "CircuitMind_Generated_Circuit"
+
+
+def sanitize_spice_title(circuit_name) -> str:
+    """Return a usable SPICE title line.
+
+    SPICE reads the first netlist line as the title, so it must be a single,
+    non-empty line. A blank, whitespace-only, or non-string name would make the
+    netlist invalid (or silently lose the title), so fall back to a default and
+    collapse embedded newlines/tabs into single spaces.
+    """
+    if not isinstance(circuit_name, str):
+        return _DEFAULT_SPICE_TITLE
+    title = " ".join(circuit_name.split())
+    return title or _DEFAULT_SPICE_TITLE
+
+
 def generate_spice(circuit_name: str, components: list) -> str:
-    lines    = [circuit_name]
+    lines    = [sanitize_spice_title(circuit_name)]
     counters: dict = {}
     
     comps = [c for c in components if c.lower() not in ("ground", "gnd")]
