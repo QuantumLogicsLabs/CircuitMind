@@ -84,10 +84,25 @@ app.add_middleware(
 # ── MIDDLEWARE ───────────────────────────────────────────────────
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    """One access-log line per request, including requests that raise.
+
+    The middleware sits outside the exception middleware, so without the
+    try/except a crashing handler produced no access-log line at all.
+    """
     start = time.time()
-    response = await call_next(request)
+    method = request.method
+    path = request.url.path
+    client = request.client.host if request.client else "-"
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration = round((time.time() - start) * 1000, 1)
+        logger.error(f"{method} {path} from {client} → 500 ({duration}ms)")
+        raise
+
     duration = round((time.time() - start) * 1000, 1)
-    logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration}ms)")
+    logger.info(f"{method} {path} from {client} → {response.status_code} ({duration}ms)")
     return response
 
 # ── GLOBAL ERROR HANDLER ─────────────────────────────────────────
