@@ -33,13 +33,17 @@ TERMINAL_SPECS: dict[str, list[str]] = {
     "battery":     ["positive", "negative"],
     "transistor":  ["base", "collector", "emitter"],
     "ic":          ["pin_1", "pin_2", "pin_3", "pin_4"],
+    # Class names emitted by dataset_preparation.setup_yolo_dataset()
+    "ic_chip":      ["pin_1", "pin_2", "pin_3", "pin_4"],
+    "power_source": ["positive", "negative"],
+    "ground":       ["terminal_1"],
 }
 DEFAULT_TERMINALS: list[str] = ["terminal_1", "terminal_2"]  # 2-pin fallback
 
 
 def _terminals_for(comp_type: str) -> list[str]:
     """Look up the correct terminal set for a component type (case-insensitive)."""
-    return TERMINAL_SPECS.get(comp_type.lower(), DEFAULT_TERMINALS)
+    return list(TERMINAL_SPECS.get(comp_type.lower(), DEFAULT_TERMINALS))
 
 
 def _terminal_coords(xmin: int, ymin: int, xmax: int, ymax: int,
