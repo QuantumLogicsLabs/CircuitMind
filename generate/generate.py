@@ -109,7 +109,12 @@ def generate_with_rules(prompt: str) -> dict:
         "components":   [],
         "connections":  [],
         "confidence":   "low",
-        "description":  "Circuit not recognised. Try: led, motor, buzzer, fan, temperature, solar, 555 timer, rc filter.",
+        "description":  (
+            "Circuit not recognised. Try: led, motor, buzzer, fan, temperature, "
+            "solar, 555 timer, rc filter, half/full adder, half/full subtractor, "
+            "odd/even parity, multiplexer, demultiplexer, decoder, comparator, "
+            "xor/xnor or a logic gate circuit."
+        ),
         "source":       "rule-based",
     }
 
