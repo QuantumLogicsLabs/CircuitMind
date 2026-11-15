@@ -114,8 +114,16 @@ VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
+def _spice_title(circuit_name) -> str:
+    """Flatten a circuit name into a single SPICE title line."""
+    if circuit_name is None:
+        return "CircuitMind_Generated_Circuit"
+    title = " ".join(str(circuit_name).split())
+    return title or "CircuitMind_Generated_Circuit"
+
+
 def generate_spice(circuit_name: str, components: list) -> str:
-    lines    = [circuit_name]
+    lines    = [_spice_title(circuit_name)]
     counters: dict = {}
     
     comps = [c for c in components if c.lower() not in ("ground", "gnd")]
