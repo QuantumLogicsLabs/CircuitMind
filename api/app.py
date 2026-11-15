@@ -6,7 +6,7 @@ import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
+from fastapi import FastAPI, HTTPException, Request, Depends, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
@@ -45,9 +45,12 @@ app = FastAPI(
 # ── RATE LIMITER SETUP ──────────────────────────────────────────
 # storage_uri points at Redis (e.g. Upstash) in production so limits hold
 # across serverless instances; falls back to in-memory when unset (local dev).
+# headers_enabled advertises the quota (X-RateLimit-Limit / -Remaining) so
+# clients can back off before hitting a 429.
 limiter = Limiter(
     key_func=get_remote_address,
     storage_uri=os.environ.get("RATE_LIMIT_REDIS_URL"),
+    headers_enabled=True,
 )
 app.state.limiter = limiter
 
@@ -161,6 +164,7 @@ def health():
 @rl("5/minute")
 def generate(
     request: Request,
+    response: Response,
     req: GenerateRequest,
     _: None = Depends(verify_api_key),
 ):
@@ -177,6 +181,7 @@ def generate(
 @rl("10/minute")
 def explain(
     request: Request,
+    response: Response,
     req: CircuitRequest,
     _: None = Depends(verify_api_key),
 ):
@@ -188,6 +193,7 @@ def explain(
 @rl("10/minute")
 def diagnose(
     request: Request,
+    response: Response,
     req: CircuitRequest,
     _: None = Depends(verify_api_key),
 ):
@@ -199,6 +205,7 @@ def diagnose(
 @rl("10/minute")
 def export(
     request: Request,
+    response: Response,
     req: ExportRequest,
     _: None = Depends(verify_api_key),
 ):
@@ -217,6 +224,7 @@ def export(
 @rl("10/minute")
 def hint(
     request: Request,
+    response: Response,
     req: HintRequest,
     _: None = Depends(verify_api_key),
 ):
@@ -228,6 +236,7 @@ def hint(
 @rl("3/minute")
 def generate_and_explain(
     request: Request,
+    response: Response,
     req: GenerateRequest,
     _: None = Depends(verify_api_key),
 ):
