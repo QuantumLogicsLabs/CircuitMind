@@ -24,6 +24,11 @@ _MODEL_DIR   = Path(__file__).parent / "models"
 MODEL_PATH   = str(_MODEL_DIR / "best.pt")
 ACTIVE_MODEL = MODEL_PATH if os.path.exists(MODEL_PATH) else "yolov8n.pt"
 
+# Each image in a batch is written to disk and pushed through YOLO
+# sequentially, so an unbounded list lets one request occupy the worker for
+# minutes and fill the temp directory.
+MAX_BATCH_IMAGES = int(os.environ.get("CV_MAX_BATCH_IMAGES", "10"))
+
 # ── Router (attach to main app) ────────────────────────────────────────────────
 router = APIRouter(prefix="/cv", tags=["computer-vision"])
 
@@ -39,6 +44,7 @@ async def cv_status():
         "model_exists":     model_ready,
         "active_weights":   ACTIVE_MODEL,
         "supported_formats": ["PNG", "JPG", "JPEG"],
+        "max_batch_images": MAX_BATCH_IMAGES,
         "capabilities": [
             "Component detection (YOLOv8)",
             "Topology extraction",
@@ -94,6 +100,15 @@ async def batch_process(
     images: list[UploadFile] = File(..., description="Multiple circuit images")
 ):
     """Process multiple circuit images and return results for each."""
+    if len(images) > MAX_BATCH_IMAGES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Too many images in one batch ({len(images)}); "
+                f"the limit is {MAX_BATCH_IMAGES}."
+            ),
+        )
+
     results = []
     for image in images:
         tmp_path = None
