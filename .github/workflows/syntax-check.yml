@@ -1,0 +1,25 @@
+name: Syntax check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Byte-compile every Python module
+        run: >-
+          python -m compileall -q
+          api cv_module diagnose explain export generate hint integration utils tests
+          app_streamlit.py cv_module.py
