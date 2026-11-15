@@ -161,7 +161,7 @@ Covers all four modules individually (`TestGenerate`, `TestExplain`, `TestDiagno
 
 - Generation quality is bounded by the LLM prompt and by 8 hardcoded fallback templates — there's no trained, domain-specific circuit model, no SPICE simulation to validate generated circuits, and no real component/BOM sourcing.
 - The component knowledge base (`utils/component_resolver.py`) covers ~30 common component types; anything outside it is treated as "unknown" by Explain/Diagnose.
-- **`cv_module/`** (image → circuit JSON via YOLO object detection) is an unfinished, standalone experiment. It requires manually downloading trained YOLO weights, has its own `requirements_cv.txt` (`torch`, `ultralytics`, `opencv-python`), and is **not imported or exposed by `api/app.py`**.
+- **`cv_module/`** (image → circuit JSON via YOLO object detection) is an unfinished, standalone experiment. It requires manually downloading trained YOLO weights, has its own `cv_requirements.txt` (`torch`, `ultralytics`, `opencv-python`), and is **not imported or exposed by `api/app.py`**.
 - Rate limiting defaults to in-memory storage, which only holds correctly within a single running process — set `RATE_LIMIT_REDIS_URL` for multi-instance/serverless deployments.
 
 ```json
