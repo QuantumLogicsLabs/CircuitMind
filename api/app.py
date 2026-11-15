@@ -148,7 +148,7 @@ def root():
     return {
         "status": "running",
         "message": "CircuitMind API is live!",
-        "version": "1.0.0",
+        "version": app.version,
     }
 
 @app.get("/health", tags=["health"])
