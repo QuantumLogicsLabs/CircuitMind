@@ -24,6 +24,9 @@ _MODEL_DIR   = Path(__file__).parent / "models"
 MODEL_PATH   = str(_MODEL_DIR / "best.pt")
 ACTIVE_MODEL = MODEL_PATH if os.path.exists(MODEL_PATH) else "yolov8n.pt"
 
+# Reported to clients instead of the absolute filesystem location.
+MODEL_DISPLAY_PATH = "cv_module/models/best.pt"
+
 # ── Router (attach to main app) ────────────────────────────────────────────────
 router = APIRouter(prefix="/cv", tags=["computer-vision"])
 
@@ -35,9 +38,9 @@ async def cv_status():
     return {
         "module":           "Computer Vision",
         "status":           "ready" if model_ready else "running_on_fallback_weights",
-        "model_path":       MODEL_PATH,
+        "model_path":       MODEL_DISPLAY_PATH,
         "model_exists":     model_ready,
-        "active_weights":   ACTIVE_MODEL,
+        "active_weights":   "custom" if model_ready else "yolov8n.pt",
         "supported_formats": ["PNG", "JPG", "JPEG"],
         "capabilities": [
             "Component detection (YOLOv8)",
