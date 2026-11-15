@@ -51,7 +51,7 @@ CircuitMind/
 ├── app_streamlit.py            # Streamlit UI (Generate / Explain / Diagnose / Export / Chatbot tabs)
 ├── cv_module/                  # Experimental, NOT wired into the API — see note below
 ├── website/                    # Git submodule (separate repo, deployed independently on Vercel)
-├── tests/test_all_modules.py   # pytest suite covering all four modules
+├── tests/test_all_modules.py   # pytest suite covering all five modules
 ├── Dockerfile                  # Builds the API and Streamlit containers
 ├── docker-compose.yml          # Runs API (7860) + Streamlit (8501) together
 ├── requirements.txt            # Full dependency set (API + Streamlit)
@@ -153,13 +153,13 @@ The **website/** frontend is a separate submodule/repo, deployed on its own — 
 ```bash
 pytest tests/
 ```
-Covers all four modules individually (`TestGenerate`, `TestExplain`, `TestDiagnose`, `TestExport`) plus end-to-end integration cases (generate → explain, generate → diagnose, generate → export).
+Covers all five modules individually (`TestGenerate`, `TestExplain`, `TestDiagnose`, `TestExport`, `TestHint`) plus end-to-end integration cases (generate → explain, generate → diagnose, generate → export).
 
 ---
 
 ## ⚠️ Known Limitations
 
-- Generation quality is bounded by the LLM prompt and by 8 hardcoded fallback templates — there's no trained, domain-specific circuit model, no SPICE simulation to validate generated circuits, and no real component/BOM sourcing.
+- Generation quality is bounded by the LLM prompt and by 20 rule-based fallback templates — there's no trained, domain-specific circuit model, no SPICE simulation to validate generated circuits, and no real component/BOM sourcing.
 - The component knowledge base (`utils/component_resolver.py`) covers ~30 common component types; anything outside it is treated as "unknown" by Explain/Diagnose.
 - **`cv_module/`** (image → circuit JSON via YOLO object detection) is an unfinished, standalone experiment. It requires manually downloading trained YOLO weights, has its own `requirements_cv.txt` (`torch`, `ultralytics`, `opencv-python`), and is **not imported or exposed by `api/app.py`**.
 - Rate limiting defaults to in-memory storage, which only holds correctly within a single running process — set `RATE_LIMIT_REDIS_URL` for multi-instance/serverless deployments.
