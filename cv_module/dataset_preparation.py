@@ -9,11 +9,20 @@ the data configuration tracking YAML profile.
 import os
 from pathlib import Path
 
-def setup_yolo_dataset():
+def setup_yolo_dataset(dataset_base: str | Path | None = None) -> Path:
     # Define absolute base paths relative to this project framework
     project_root = Path(__file__).resolve().parent.parent
-    dataset_base = project_root / "cv_module" / "dataset"
-    
+    dataset_base = (
+        Path(dataset_base) if dataset_base is not None
+        else project_root / "cv_module" / "dataset"
+    )
+
+    def _display(folder: Path) -> str:
+        try:
+            return str(folder.relative_to(project_root))
+        except ValueError:
+            return str(folder)
+
     print(f"📦 Initializing Dataset Directory Setup at: {dataset_base}")
     
     # 1. Define the mandatory directory structure YOLO expects
@@ -29,7 +38,7 @@ def setup_yolo_dataset():
     # Create folders if they don't exist
     for folder in subdirectories:
         folder.mkdir(parents=True, exist_ok=True)
-        print(f"  ✅ Created/Verified: {folder.relative_to(project_root)}")
+        print(f"  ✅ Created/Verified: {_display(folder)}")
 
     # 2. Define custom circuit component classes for the model
     # Update or add classes here depending on your dataset annotation index
@@ -50,8 +59,8 @@ def setup_yolo_dataset():
     yaml_content = f"""# CircuitMind AI - YOLO Dataset Configuration Profile
 # Generated dynamically by dataset_preparation.py
 
-# Cloud path contexts (Relative to Colab target workspace execution directory)
-path: ./circuit_mind_data/dataset
+# Dataset root (absolute so YOLO resolves it regardless of the working directory)
+path: {dataset_base.as_posix()}
 train: images/train
 val: images/val
 test: images/test
@@ -67,6 +76,7 @@ names:
         
     print(f"\n📝 Successfully generated YOLO tracking configuration at:\n   {yaml_path}")
     print("\n🏁 Setup sequence complete. Populate folders before archiving for cloud execution.")
+    return yaml_path
 
 if __name__ == "__main__":
     setup_yolo_dataset()
