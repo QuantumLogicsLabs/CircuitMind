@@ -74,6 +74,23 @@ COMPONENT_DB: dict[str, dict] = {
     "input_c":       {"role": "input signal",  "description": "provides a digital input signal (C)"},
     "sum_output":    {"role": "output signal", "description": "carries the sum result of an arithmetic operation"},
     "carry_output":  {"role": "output signal", "description": "carries the carry result of an arithmetic operation"},
+    # Logic signal pins emitted by the rule-based logic circuits
+    "parity_output": {"role": "output signal", "description": "carries the parity result of the inputs"},
+    "diff_output":   {"role": "output signal", "description": "carries the difference of a subtraction"},
+    "borrow_output": {"role": "output signal", "description": "carries the borrow of a subtraction"},
+    "cout":          {"role": "output signal", "description": "carries the carry-out of an addition"},
+    "cin":           {"role": "input signal",  "description": "carries the carry-in of an addition"},
+    "bin":           {"role": "input signal",  "description": "carries the borrow-in of a subtraction"},
+    "sel":           {"role": "input signal",  "description": "selects which input path is routed to the output"},
+    "input_din":     {"role": "input signal",  "description": "provides the data input of a demultiplexer"},
+    "eq_out":        {"role": "output signal", "description": "is HIGH when the compared values are equal"},
+    "gt_out":        {"role": "output signal", "description": "is HIGH when the first value is greater"},
+    "lt_out":        {"role": "output signal", "description": "is HIGH when the first value is smaller"},
+    "output":        {"role": "output signal", "description": "carries the circuit's result"},
+    "y0":            {"role": "output signal", "description": "carries decoder output bit 0"},
+    "y1":            {"role": "output signal", "description": "carries decoder output bit 1"},
+    "y2":            {"role": "output signal", "description": "carries decoder output bit 2"},
+    "y3":            {"role": "output signal", "description": "carries decoder output bit 3"},
 }
 
 POWER_SOURCES       = {"battery", "power_supply", "solar_cell"}
