@@ -7,7 +7,7 @@
 
 ## What It Does
 
-This FastAPI server connects all 4 modules (Generate, Explain, Diagnose, Export) into a single running service. Any frontend, tool, or script can send requests to this API and get circuit results back.
+This FastAPI server connects all 5 modules (Generate, Explain, Diagnose, Export, Hint) into a single running service. Any frontend, tool, or script can send requests to this API and get circuit results back.
 
 ---
 
@@ -16,12 +16,57 @@ This FastAPI server connects all 4 modules (Generate, Explain, Diagnose, Export)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/` | Health check — confirms API is running |
+| GET | `/health` | Liveness probe — always returns `{"status": "ok"}` |
 | POST | `/generate` | Convert natural language prompt to circuit JSON |
 | POST | `/explain` | Explain a circuit in plain English |
 | POST | `/diagnose` | Check circuit for electrical issues |
-| POST | `/export` | Export circuit to SPICE netlist or SVG |
+| POST | `/export` | Export circuit to SPICE netlist, SVG or gate JSON |
 | POST | `/hint` | Digital-logic circuit-builder hint (truth table + student's current gate graph → one non-spoiler hint) |
 | POST | `/generate-and-explain` | Generate + explain + diagnose in one request |
+
+### Authentication
+
+Authentication is optional. If the server is started with `CIRCUITMIND_API_KEY`
+set, every `POST` endpoint requires that key in the `X-API-Key` header:
+
+```bash
+curl -X POST http://localhost:8000/generate \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $CIRCUITMIND_API_KEY" \
+  -d '{"prompt": "555 timer circuit"}'
+```
+
+A missing or wrong key returns `401` with `{"detail": "Invalid or missing API key"}`.
+When the variable is unset the API is open (development mode).
+
+### Rate limits
+
+Limits are per client IP, enforced with `slowapi`:
+
+| Endpoint | Limit |
+|---|---|
+| `/generate` | 5/minute |
+| `/generate-and-explain` | 3/minute |
+| `/explain`, `/diagnose`, `/export`, `/hint` | 10/minute |
+
+Exceeding a limit returns `429 Too Many Requests`. Set `RATE_LIMIT_REDIS_URL`
+to a Redis instance (for example Upstash) so limits hold across multiple
+serverless instances; otherwise the limiter uses in-process memory.
+
+### CORS
+
+Allowed origins come from the comma-separated `ALLOWED_ORIGINS` environment
+variable (Streamlit and localhost dev ports by default). `GET` and `POST` are
+allowed.
+
+### Error responses
+
+| Status | Meaning |
+|---|---|
+| `401` | `CIRCUITMIND_API_KEY` is set and the `X-API-Key` header is missing or wrong |
+| `422` | Request body failed validation (empty/overlong prompt, unsupported `export_format`, missing circuit fields, …) |
+| `429` | Rate limit exceeded |
+| `500` | Unhandled server error — body is `{"error": "Internal server error. Please try again."}` |
 
 ---
 

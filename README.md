@@ -16,7 +16,7 @@ It is **not** a fine-tuned domain-specific model. Circuit generation is done by 
 
 | Step | Module | Approach |
 |---|---|---|
-| **Generate** | [`generate/generate.py`](generate/generate.py) | Prompt → Groq LLM (JSON-constrained) → falls back to 8 hardcoded keyword-matched circuit templates (LED, motor, buzzer, fan, temperature sensor, solar charger, 555 timer, RC filter) if the LLM call fails |
+| **Generate** | [`generate/generate.py`](generate/generate.py) | Prompt → Groq LLM (JSON-constrained) → falls back to 20 hardcoded keyword-matched circuit templates (analog basics like LED/motor/buzzer/fan, sensors, 555 timer, RC filter, and combinational logic such as half/full adders, subtractors, multiplexers, decoders and comparators) if the LLM call fails |
 | **Explain** | [`explain/explain_module.py`](explain/explain_module.py) | Looks each component up in [`utils/component_resolver.py`](utils/component_resolver.py)'s knowledge base (~30 components with role + description), builds a plain-English explanation, current-flow description, and warnings |
 | **Diagnose** | [`diagnose/diagnose_module.py`](diagnose/diagnose_module.py) | Rule-based checks: missing power source, missing current-limiting resistor, no connections defined, BFS-based short-circuit detection, floating (disconnected) components, unspecified capacitor polarity, missing ground reference |
 | **Export** | [`export/export_module.py`](export/export_module.py) | Converts circuit JSON to a SPICE netlist, an SVG schematic (via `schemdraw`), or a gate-graph JSON (for a logic-gate simulator front end) |
@@ -105,7 +105,8 @@ docker-compose up --build
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/health` | Health check |
+| GET | `/` | Health check — confirms the API is running |
+| GET | `/health` | Lightweight health check (`{"status": "ok"}`) |
 | POST | `/generate` | Prompt → circuit JSON |
 | POST | `/explain` | Circuit JSON → plain-English explanation |
 | POST | `/diagnose` | Circuit JSON → electrical-issue report |
@@ -119,7 +120,8 @@ curl -X POST http://localhost:8000/generate \
   -d '{"prompt": "make me a LED circuit"}'
 ```
 
-Full request/response examples are in [`api/README.md`](api/README.md).
+Full request/response examples, authentication, rate-limit details and error
+shapes are in [`api/README.md`](api/README.md).
 
 Requests are rate-limited per-IP via `slowapi` (5/min on `/generate`, 10/min on `/explain`, `/diagnose`, `/export`, `/hint`, 3/min on `/generate-and-explain`) and, if `CIRCUITMIND_API_KEY` is set, require an `X-API-Key` header.
 
@@ -159,7 +161,7 @@ Covers all four modules individually (`TestGenerate`, `TestExplain`, `TestDiagno
 
 ## ⚠️ Known Limitations
 
-- Generation quality is bounded by the LLM prompt and by 8 hardcoded fallback templates — there's no trained, domain-specific circuit model, no SPICE simulation to validate generated circuits, and no real component/BOM sourcing.
+- Generation quality is bounded by the LLM prompt and by 20 hardcoded fallback templates — there's no trained, domain-specific circuit model, no SPICE simulation to validate generated circuits, and no real component/BOM sourcing.
 - The component knowledge base (`utils/component_resolver.py`) covers ~30 common component types; anything outside it is treated as "unknown" by Explain/Diagnose.
 - **`cv_module/`** (image → circuit JSON via YOLO object detection) is an unfinished, standalone experiment. It requires manually downloading trained YOLO weights, has its own `requirements_cv.txt` (`torch`, `ultralytics`, `opencv-python`), and is **not imported or exposed by `api/app.py`**.
 - Rate limiting defaults to in-memory storage, which only holds correctly within a single running process — set `RATE_LIMIT_REDIS_URL` for multi-instance/serverless deployments.
