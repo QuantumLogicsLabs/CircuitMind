@@ -16,6 +16,7 @@ from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 
 from cv_module.topology_extraction import image_to_circuit_json
+from cv_module.upload_validation import UploadValidationError, validate_upload
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,16 @@ logger = logging.getLogger(__name__)
 _MODEL_DIR   = Path(__file__).parent / "models"
 MODEL_PATH   = str(_MODEL_DIR / "best.pt")
 ACTIVE_MODEL = MODEL_PATH if os.path.exists(MODEL_PATH) else "yolov8n.pt"
+
+
+async def _read_validated_upload(image: UploadFile) -> tuple[bytes, str]:
+    """Read the upload and validate type/extension/size, returning bytes and suffix."""
+    data = await image.read()
+    try:
+        suffix = validate_upload(image.content_type, image.filename, len(data))
+    except UploadValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return data, suffix
 
 # ── Router (attach to main app) ────────────────────────────────────────────────
 router = APIRouter(prefix="/cv", tags=["computer-vision"])
@@ -56,14 +67,12 @@ async def image_to_circuit(
     Upload a circuit image and receive structured circuit JSON.
     Uses YOLOv8 for component detection + OpenCV for wire tracing.
     """
-    if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image (PNG/JPG/JPEG).")
+    data, suffix = await _read_validated_upload(image)
 
     tmp_path = None
     try:
-        suffix = Path(image.filename or "upload").suffix or ".png"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(await image.read())
+            tmp.write(data)
             tmp_path = tmp.name
 
         circuit_json = image_to_circuit_json(
@@ -98,13 +107,16 @@ async def batch_process(
     for image in images:
         tmp_path = None
         try:
-            suffix = Path(image.filename or "upload").suffix or ".png"
+            data, suffix = await _read_validated_upload(image)
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                tmp.write(await image.read())
+                tmp.write(data)
                 tmp_path = tmp.name
 
             circuit_json = image_to_circuit_json(tmp_path, ACTIVE_MODEL)
             results.append({"filename": image.filename, "success": True, "circuit_data": circuit_json})
+
+        except HTTPException as e:
+            results.append({"filename": image.filename, "success": False, "error": e.detail})
 
         except Exception as e:
             results.append({"filename": image.filename, "success": False, "error": str(e)})
