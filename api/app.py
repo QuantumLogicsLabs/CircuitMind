@@ -1,5 +1,7 @@
 import sys
 import os
+import re
+import uuid
 import logging
 import time
 import json
@@ -82,21 +84,46 @@ app.add_middleware(
 )
 
 # ── MIDDLEWARE ───────────────────────────────────────────────────
+# Client-supplied request IDs are logged verbatim, so only accept short,
+# log-safe tokens; anything else is replaced by a fresh UUID.
+_SAFE_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+
+def _request_id_for(request: Request) -> str:
+    candidate = request.headers.get("x-request-id", "")
+    if candidate and _SAFE_REQUEST_ID.match(candidate):
+        return candidate
+    return uuid.uuid4().hex
+
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
+    request_id = _request_id_for(request)
+    request.state.request_id = request_id
     response = await call_next(request)
     duration = round((time.time() - start) * 1000, 1)
-    logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration}ms)")
+    logger.info(
+        f"[{request_id}] {request.method} {request.url.path} "
+        f"→ {response.status_code} ({duration}ms)"
+    )
+    response.headers["X-Request-ID"] = request_id
     return response
 
 # ── GLOBAL ERROR HANDLER ─────────────────────────────────────────
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled error on {request.url.path}: {exc}", exc_info=True)
+    request_id = getattr(request.state, "request_id", "-")
+    logger.error(
+        f"[{request_id}] Unhandled error on {request.url.path}: {exc}",
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error. Please try again."},
+        content={
+            "error": "Internal server error. Please try again.",
+            "request_id": request_id,
+        },
     )
 
 # ── RATE LIMIT SHORTCUT ──────────────────────────────────────────
