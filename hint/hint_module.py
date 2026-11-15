@@ -168,6 +168,50 @@ def _hint_with_llm(payload: dict) -> str:
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
 
+def _stuck_output_hint(last_result) -> str | None:
+    """Hint about an OUTPUT that never changes across failing rows.
+
+    A column that is constant in the student's actual results while the truth
+    table expects it to vary usually points at a mis-wired or unconnected path
+    into that OUTPUT gate. Needs at least two failing rows to say anything.
+    """
+    failing_rows = (last_result or {}).get("failing_rows") or []
+    if len(failing_rows) < 2:
+        return None
+
+    actual_values: dict = {}
+    expected_values: dict = {}
+    for row in failing_rows:
+        if not isinstance(row, dict):
+            continue
+        actual = row.get("actual")
+        expected = row.get("expected")
+        if not isinstance(actual, dict) or not isinstance(expected, dict):
+            continue
+        for name, value in actual.items():
+            actual_values.setdefault(name, set()).add(value)
+        for name, value in expected.items():
+            expected_values.setdefault(name, set()).add(value)
+
+    stuck = sorted(
+        name for name, values in actual_values.items()
+        if len(values) == 1 and len(expected_values.get(name, set())) > 1
+    )
+    if not stuck:
+        return None
+
+    details = "; ".join(
+        f"{name} is always {next(iter(actual_values[name]))}" for name in stuck
+    )
+    subject = "those outputs" if len(stuck) > 1 else "that output"
+    return (
+        f"In your failing rows {details}, but the truth table needs {subject} "
+        "to change. That usually means the signal is stuck — trace back from "
+        "the OUTPUT gate and check the last gate feeding it is wired to the "
+        "right inputs and is not permanently inverted."
+    )
+
+
 def _hint_with_rules(payload: dict) -> str:
     gates = payload.get("gates", [])
     wires = payload.get("wires", [])
@@ -199,6 +243,10 @@ def _hint_with_rules(payload: dict) -> str:
             f"'{names}' isn't connected to anything yet — a floating gate can't "
             "affect the output. Wire it in."
         )
+
+    stuck_hint = _stuck_output_hint(payload.get("last_result"))
+    if stuck_hint:
+        return stuck_hint
 
     return (
         "Gate and wire counts look reasonable — walk through the truth table row "
