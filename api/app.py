@@ -164,7 +164,7 @@ def generate(
     req: GenerateRequest,
     _: None = Depends(verify_api_key),
 ):
-    logger.info(f"Generate request: '{req.prompt[:60]}'")
+    logger.info("Generate request: prompt_length=%d", len(req.prompt))
 
     result = generate_circuit(req.prompt)
     if "error" in result:
@@ -220,7 +220,7 @@ def hint(
     req: HintRequest,
     _: None = Depends(verify_api_key),
 ):
-    logger.info(f"Hint request: '{req.problem_title[:60]}'")
+    logger.info("Hint request: title_length=%d", len(req.problem_title))
     return generate_hint(req.model_dump())
 
 
@@ -231,7 +231,7 @@ def generate_and_explain(
     req: GenerateRequest,
     _: None = Depends(verify_api_key),
 ):
-    logger.info(f"Generate-and-explain request: '{req.prompt[:60]}'")
+    logger.info("Generate-and-explain request: prompt_length=%d", len(req.prompt))
 
     circuit = generate_circuit(req.prompt)
     if "error" in circuit:
