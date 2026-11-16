@@ -116,6 +116,25 @@ def generate_with_rules(prompt: str) -> dict:
 
 # ── LLM Generation ────────────────────────────────────────────────────────────
 
+DEFAULT_LLM_TIMEOUT = 30.0
+
+
+def _llm_timeout() -> float:
+    """Groq request timeout in seconds, overridable via GROQ_TIMEOUT."""
+    raw = os.environ.get("GROQ_TIMEOUT", "").strip()
+    if not raw:
+        return DEFAULT_LLM_TIMEOUT
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("Ignoring invalid GROQ_TIMEOUT=%r", raw)
+        return DEFAULT_LLM_TIMEOUT
+    if value <= 0:
+        logger.warning("Ignoring non-positive GROQ_TIMEOUT=%r", raw)
+        return DEFAULT_LLM_TIMEOUT
+    return value
+
+
 _SYSTEM_PROMPT = (
     "You are a circuit generator AI. "
     "Convert user requests into circuit JSON. "
@@ -158,6 +177,7 @@ def generate_with_llm(prompt: str) -> dict:
         ],
         max_tokens=512,
         temperature=0.2,
+        timeout=_llm_timeout(),
     )
 
     raw = completion.choices[0].message.content.strip()
