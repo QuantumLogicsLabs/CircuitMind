@@ -112,6 +112,10 @@ COMPONENT_VALUES = {
 VALID_FORMATS = {"spice", "svg", "gate_json"}
 
 
+class ExportDependencyError(RuntimeError):
+    """Raised when an optional export dependency is not installed."""
+
+
 # ── SPICE generator ────────────────────────────────────────────────────────────
 
 def generate_spice(circuit_name: str, components: list) -> str:
@@ -159,7 +163,9 @@ def generate_svg(circuit_name: str, components: list) -> str:
         import schemdraw
         import schemdraw.elements as elm
     except ImportError:
-        raise RuntimeError("schemdraw is not installed. Run: pip install schemdraw")
+        raise ExportDependencyError(
+            "schemdraw is not installed. Run: pip install schemdraw"
+        )
 
     SVG_MAP = {
         # Power sources
@@ -432,6 +438,13 @@ def export_module(json_input: str, export_format: str = "spice") -> dict:
     if export_format == "svg":
         try:
             svg_markup = generate_svg(name, components)
+        except ExportDependencyError as e:
+            # A missing server-side dependency is not the client's fault.
+            return {
+                "status": "error",
+                "error_code": "DEPENDENCY_MISSING",
+                "message": str(e),
+            }
         except RuntimeError as e:
             return {"status": "error", "message": str(e)}
         return {
