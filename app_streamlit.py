@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import base64
+import logging
 import traceback
 from dotenv import load_dotenv
 import streamlit as st
@@ -18,8 +19,11 @@ from generate.generate import generate_circuit as _generate_circuit
 from explain.explain_module import explain_circuit as _explain_circuit
 from diagnose.diagnose_module import diagnose_circuit as _diagnose_circuit
 from export.export_module import export_module as _export_module
+from utils import chat_assistant
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # ── API WRAPPER FUNCTIONS (Local) ─────────────────────────────────────────────
 
@@ -30,8 +34,14 @@ def _catch_errors(func, *args, **kwargs):
         if isinstance(res, dict) and "error" in res:
             return res
         return res
-    except Exception as e:
-        return {"error": f"Internal Error: {str(e)}"}
+    except Exception:
+        logger.exception("Streamlit action failed")
+        return {
+            "error": (
+                "Something went wrong while processing your circuit. "
+                "Please try again."
+            )
+        }
 
 def generate_circuit(prompt):
     return _catch_errors(_generate_circuit, prompt)
@@ -270,40 +280,12 @@ with tab5:
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        api_key = os.environ.get("GROQ_API_KEY")
-
-        if not api_key:
-            response = "⚠️ GROQ_API_KEY not set. Please add it to your .env file."
-        else:
-            try:
-                from groq import Groq
-
-                client = Groq(api_key=api_key)
-
-                system_msg = {
-                    "role": "system",
-                    "content": (
-                        "You are CircuitMind Assistant — an expert AI for electronics and circuits. "
-                        "Help users understand components, design circuits, explain how circuits work, "
-                        "and diagnose problems. Keep answers clear, helpful, and concise."
-                    ),
-                }
-
-                history = [
-                    {"role": m["role"], "content": m["content"]}
-                    for m in st.session_state.messages[-6:]
-                ]
-
-                completion = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[system_msg] + history,
-                    max_tokens=500,
-                )
-
-                response = completion.choices[0].message.content
-
-            except Exception as e:
-                response = f"Sorry, I couldn't connect right now. Error: {e}"
+        response, error = chat_assistant.chat_reply(
+            st.session_state.messages,
+            api_key=os.environ.get("GROQ_API_KEY"),
+        )
+        if error:
+            response = error
 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
