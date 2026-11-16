@@ -68,15 +68,36 @@ def verify_api_key(x_api_key: str = Header(default=None)):
         )
 
 # ── CORS ─────────────────────────────────────────────────────────
-allowed_origins = os.environ.get(
-    "ALLOWED_ORIGINS",
-    "http://localhost:8501,http://127.0.0.1:8501,http://localhost:3000,http://127.0.0.1:3000"
-).split(",")
+_DEFAULT_ORIGINS = (
+    "http://localhost:8501,http://127.0.0.1:8501,"
+    "http://localhost:3000,http://127.0.0.1:3000"
+)
+
+
+def _cors_settings(raw: str) -> tuple[list[str], bool]:
+    """Resolve CORS origins and whether credentialed requests are allowed.
+
+    Browsers reject ``Access-Control-Allow-Origin: *`` on a credentialed
+    request, so a wildcard origin list must turn credentials off. Keeping
+    both enabled silently breaks every cross-origin request from the UI.
+    """
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if "*" in origins:
+        logger.warning(
+            "ALLOWED_ORIGINS contains '*'; credentialed CORS requests disabled"
+        )
+        return origins, False
+    return origins, True
+
+
+allowed_origins, allow_credentials = _cors_settings(
+    os.environ.get("ALLOWED_ORIGINS", _DEFAULT_ORIGINS)
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
