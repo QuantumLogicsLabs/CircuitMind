@@ -208,6 +208,9 @@ def export(
     result = export_module(json_str, export_format=req.export_format)
 
     if result.get("status") == "error":
+        if result.get("error_code") == "DEPENDENCY_MISSING":
+            # The request was valid; the server cannot render SVG here.
+            raise HTTPException(status_code=503, detail=result["message"])
         raise HTTPException(status_code=422, detail=result["message"])
 
     return result
