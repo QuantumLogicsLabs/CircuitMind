@@ -42,6 +42,20 @@ def _terminals_for(comp_type: str) -> list[str]:
     return TERMINAL_SPECS.get(comp_type.lower(), DEFAULT_TERMINALS)
 
 
+def _class_name_for_box(names, box) -> str | None:
+    """Resolve a detection's class name, or None when the id has no label."""
+    try:
+        cls_id = int(box.cls[0])
+    except (AttributeError, IndexError, TypeError, ValueError):
+        return None
+    if isinstance(names, dict):
+        return names.get(cls_id)
+    try:
+        return names[cls_id]
+    except (IndexError, KeyError, TypeError):
+        return None
+
+
 def _terminal_coords(xmin: int, ymin: int, xmax: int, ymax: int,
                       pin_names: list[str]) -> list[dict]:
     """
@@ -103,9 +117,20 @@ class CircuitTopologyExtractor:
             return components, connections
 
         for i, box in enumerate(yolo_results.boxes):
-            cls_id = int(box.cls[0])
-            label  = yolo_results.names[cls_id]
-            xywh   = box.xywhn[0].tolist() if hasattr(box, "xywhn") else [0.5, 0.5, 0.1, 0.1]
+            label = _class_name_for_box(yolo_results.names, box)
+            if label is None:
+                logger.warning("Skipping detection %d: unknown class id", i)
+                continue
+            xywh = [0.5, 0.5, 0.1, 0.1]
+            if hasattr(box, "xywhn"):
+                try:
+                    values = box.xywhn[0].tolist()
+                except (AttributeError, IndexError, TypeError):
+                    values = []
+                if len(values) < 2:
+                    logger.warning("Skipping detection %d: malformed box", i)
+                    continue
+                xywh = values
             components.append(Component(id=f"{label}_{i + 1}", type=label, x=xywh[0], y=xywh[1]))
 
         for i, a in enumerate(components):
@@ -143,6 +168,33 @@ def image_to_circuit_json(image_path: str, model_path: str = "./cv_module/models
     }
 
 
+def _components_from_boxes(boxes, names) -> list[dict]:
+    """Convert detector boxes into component records, skipping unusable ones."""
+    components: list[dict] = []
+    for idx, box in enumerate(boxes):
+        comp_type = _class_name_for_box(names, box)
+        if comp_type is None:
+            logger.warning("Skipping box %d: unknown class id", idx)
+            continue
+        try:
+            coords = box.xyxy[0].tolist()
+        except (AttributeError, IndexError, TypeError):
+            coords = []
+        if len(coords) < 4:
+            logger.warning("Skipping box %d: malformed coordinates", idx)
+            continue
+        xmin, ymin, xmax, ymax = map(int, coords[:4])
+        cx, cy    = (xmin + xmax) // 2, (ymin + ymax) // 2
+        pin_names = _terminals_for(comp_type)
+        components.append({
+            "id":     f"{comp_type.upper()}_{idx + 1}",
+            "type":   comp_type,
+            "center": [cx, cy],
+            "terminals": _terminal_coords(xmin, ymin, xmax, ymax, pin_names),
+        })
+    return components
+
+
 def generate_circuit_netlist(image_path: str, model_path: str) -> str:
     """
     YOLO + OpenCV wire-tracing implementation.
@@ -178,17 +230,15 @@ def generate_circuit_netlist(image_path: str, model_path: str) -> str:
         }
         return json.dumps(adapt_netlist_to_schema(empty_netlist), indent=2)
 
-    for idx, box in enumerate(boxes):
-        xmin, ymin, xmax, ymax = map(int, box.xyxy[0].tolist())
-        comp_type = model.names[int(box.cls[0])]
-        cx, cy    = (xmin + xmax) // 2, (ymin + ymax) // 2
-        pin_names = _terminals_for(comp_type)
-        components.append({
-            "id":     f"{comp_type.upper()}_{idx + 1}",
-            "type":   comp_type,
-            "center": [cx, cy],
-            "terminals": _terminal_coords(xmin, ymin, xmax, ymax, pin_names),
-        })
+    components = _components_from_boxes(boxes, model.names)
+
+    if not components:
+        empty_netlist = {
+            "metadata": {"total_components": 0, "total_connections": 0},
+            "components": [],
+            "connections": [],
+        }
+        return json.dumps(adapt_netlist_to_schema(empty_netlist), indent=2)
 
     used_pairs: set = set()
     for i, ca in enumerate(components):
