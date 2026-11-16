@@ -29,6 +29,25 @@ except ImportError:
 
 # ── LLM Hint ─────────────────────────────────────────────────────────────────
 
+DEFAULT_LLM_TIMEOUT = 30.0
+
+
+def _llm_timeout() -> float:
+    """Groq request timeout in seconds, overridable via GROQ_TIMEOUT."""
+    raw = os.environ.get("GROQ_TIMEOUT", "").strip()
+    if not raw:
+        return DEFAULT_LLM_TIMEOUT
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("Ignoring invalid GROQ_TIMEOUT=%r", raw)
+        return DEFAULT_LLM_TIMEOUT
+    if value <= 0:
+        logger.warning("Ignoring non-positive GROQ_TIMEOUT=%r", raw)
+        return DEFAULT_LLM_TIMEOUT
+    return value
+
+
 _SYSTEM_PROMPT = (
     "You are a digital logic design tutor. A student is building a combinational "
     "or sequential logic circuit (gate types: AND, OR, NOT, NAND, NOR, XOR, XNOR, "
@@ -162,6 +181,7 @@ def _hint_with_llm(payload: dict) -> str:
         ],
         max_tokens=220,
         temperature=0.4,
+        timeout=_llm_timeout(),
     )
     return completion.choices[0].message.content.strip()
 
