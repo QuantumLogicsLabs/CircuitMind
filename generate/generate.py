@@ -158,6 +158,9 @@ def generate_with_llm(prompt: str) -> dict:
         ],
         max_tokens=512,
         temperature=0.2,
+        # Ask Groq for JSON directly; the prompt also forbids markdown so the
+        # fence stripping below still handles models without a JSON mode.
+        response_format={"type": "json_object"},
     )
 
     raw = completion.choices[0].message.content.strip()
