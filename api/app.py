@@ -81,7 +81,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── SECURITY HEADERS ─────────────────────────────────────────────
+# The API serves JSON plus Swagger/ReDoc pages; these headers harden both
+# without a Content-Security-Policy that would break the docs UI.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+}
+
 # ── MIDDLEWARE ───────────────────────────────────────────────────
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
