@@ -25,6 +25,7 @@ from explain.explain_module import explain_circuit
 from diagnose.diagnose_module import diagnose_circuit
 from export.export_module import export_module
 from hint.hint_module import generate_hint
+from cv_module.cv_api import router as cv_router
 
 # ── LOGGING ──────────────────────────────────────────────────────
 logging.basicConfig(
@@ -41,6 +42,12 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# ── CV ROUTES ────────────────────────────────────────────────────
+# cv_module.cv_api exposes a mountable router. Attach it so the image
+# endpoints are reachable from the main deployment, not only from a
+# separately started CV app.
+app.include_router(cv_router)
 
 # ── RATE LIMITER SETUP ──────────────────────────────────────────
 # storage_uri points at Redis (e.g. Upstash) in production so limits hold
