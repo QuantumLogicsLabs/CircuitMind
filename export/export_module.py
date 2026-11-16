@@ -10,6 +10,7 @@ Converts circuit JSON into:
 
 import json
 import logging
+import re
 from collections import defaultdict, deque
 from datetime import datetime, timezone
 
@@ -241,6 +242,9 @@ _FRIENDLY_LABELS = {
 }
 
 
+_DECODER_OUTPUT = re.compile(r"y\d+")
+
+
 def _classify_component(component: str, index: int, total: int) -> tuple[str, int, bool]:
     comp_lower = component.lower()
     if (
@@ -255,6 +259,7 @@ def _classify_component(component: str, index: int, total: int) -> tuple[str, in
         or comp_lower.endswith("_output")
         or comp_lower.endswith("_out")
         or comp_lower in ("cout", "sum", "carry", "led", "lamp", "buzzer")
+        or _DECODER_OUTPUT.fullmatch(comp_lower)
         or (index == total - 1 and total <= 3)
     ):
         return "OUTPUT", 1, False
