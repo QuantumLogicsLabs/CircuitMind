@@ -14,6 +14,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_LLM_MODEL = "llama-3.3-70b-versatile"
+
+
+def _llm_model() -> str:
+    """Groq model id, overridable via GROQ_MODEL for deployments."""
+    return os.environ.get("GROQ_MODEL", "").strip() or DEFAULT_LLM_MODEL
+
 try:
     from groq import Groq
     GROQ_AVAILABLE = True
@@ -155,7 +162,7 @@ def _hint_with_llm(payload: dict) -> str:
 
     client = Groq(api_key=api_key)
     completion = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=_llm_model(),
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": _build_user_prompt(payload)},
