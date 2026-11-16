@@ -163,7 +163,11 @@ def _hint_with_llm(payload: dict) -> str:
         max_tokens=220,
         temperature=0.4,
     )
-    return completion.choices[0].message.content.strip()
+    content = completion.choices[0].message.content
+    if not isinstance(content, str) or not content.strip():
+        # An empty completion would otherwise be shown as a blank hint.
+        raise RuntimeError("LLM returned an empty hint")
+    return content.strip()
 
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
