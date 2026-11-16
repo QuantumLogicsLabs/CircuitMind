@@ -45,8 +45,22 @@ app = FastAPI(
 # ── RATE LIMITER SETUP ──────────────────────────────────────────
 # storage_uri points at Redis (e.g. Upstash) in production so limits hold
 # across serverless instances; falls back to in-memory when unset (local dev).
+def client_key(request: Request) -> str:
+    """Rate-limit key, optionally keyed on the real client behind a proxy.
+
+    Honouring X-Forwarded-For is opt-in: a server that is reachable directly
+    would otherwise let clients spoof the header and escape the limit.
+    """
+    if os.environ.get("TRUST_PROXY_HEADERS", "").strip().lower() in ("1", "true", "yes"):
+        forwarded = request.headers.get("x-forwarded-for", "")
+        first_hop = forwarded.split(",")[0].strip()
+        if first_hop:
+            return first_hop
+    return get_remote_address(request)
+
+
 limiter = Limiter(
-    key_func=get_remote_address,
+    key_func=client_key,
     storage_uri=os.environ.get("RATE_LIMIT_REDIS_URL"),
 )
 app.state.limiter = limiter
