@@ -168,6 +168,19 @@ def _hint_with_llm(payload: dict) -> str:
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
 
+def _find_output_used_as_source(gates: list, wires: list):
+    """Return the first OUTPUT gate that drives another gate, else None."""
+    outputs = {
+        g.get("id"): g for g in gates
+        if str(g.get("type", "")).upper() == "OUTPUT"
+    }
+    for w in wires or []:
+        gate = outputs.get(w.get("fromId"))
+        if gate is not None:
+            return gate
+    return None
+
+
 def _hint_with_rules(payload: dict) -> str:
     gates = payload.get("gates", [])
     wires = payload.get("wires", [])
@@ -198,6 +211,15 @@ def _hint_with_rules(payload: dict) -> str:
         return (
             f"'{names}' isn't connected to anything yet — a floating gate can't "
             "affect the output. Wire it in."
+        )
+
+    reversed_output = _find_output_used_as_source(gates, wires)
+    if reversed_output:
+        name = reversed_output.get("label") or f"gate{reversed_output.get('id')}"
+        return (
+            f"'{name}' is an OUTPUT gate but its wire feeds another gate. "
+            "An OUTPUT only displays the result — logic should flow into it, "
+            "not out of it."
         )
 
     return (
