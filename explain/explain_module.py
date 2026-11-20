@@ -39,8 +39,9 @@ def _parse_flow(connections: list[str]) -> str:
             arrow_chain = " → ".join(nodes)
             parts.append(f"Current flows from the {arrow_chain}.")
 
-            # Add effect note
-            last = _normalize(nodes[-1]) if nodes else ""
+            # Add effect note. Resolve aliases ("lamp", "horn") first so the
+            # note matches the component the alias points at.
+            last = _fuzzy_match(_normalize(nodes[-1])) if nodes else ""
             if last in LED_OUTPUTS:
                 parts[-1] += " This causes the LED to emit light."
             elif last in MOTOR_OUTPUTS:
