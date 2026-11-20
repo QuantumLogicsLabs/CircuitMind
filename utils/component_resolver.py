@@ -139,6 +139,8 @@ _ALIASES = {
     "jfet": "mosfet",
     # ICs
     "timer": "555_timer",
+    "timer_ic": "555_timer",
+    "oscillator": "555_timer",
     "ne555": "555_timer",
     "opamp": "op_amp",
     "operational_amplifier": "op_amp",
@@ -150,6 +152,9 @@ _ALIASES = {
     "light": "led",
     "beeper": "buzzer",
     "horn": "buzzer",
+    "loudspeaker": "speaker",
+    "seven_segment": "display",
+    "7_segment": "display",
     # Sensors
     "photoresistor": "ldr",
     "light_dependent_resistor": "ldr",
