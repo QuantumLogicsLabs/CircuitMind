@@ -189,6 +189,21 @@ def check_capacitor_polarity(components: list, connections: list) -> str | None:
     return None
 
 
+def check_load_present(components: list) -> dict | None:
+    """Warn when a powered circuit contains no component that consumes energy."""
+    normalized = [_fuzzy_match(_normalize(c)) for c in components]
+    has_power = any(c in POWER_SOURCES for c in normalized)
+    has_load  = any(c in LOAD_COMPONENTS for c in normalized)
+    if has_power and not has_load:
+        return {
+            "severity": "warning",
+            "code": "NO_LOAD",
+            "message": "No load found. The power source has nothing to drive.",
+            "suggestion": "Add a load such as an LED, motor, buzzer, or resistor.",
+        }
+    return None
+
+
 def check_ground_present(components: list, connections: list) -> str | None:
     all_text = " ".join(components + connections).lower()
     has_ground = any(kw in all_text for kw in GROUND_KEYWORDS)
@@ -218,7 +233,12 @@ def diagnose_circuit(circuit: dict) -> dict:
             "suggestion": "Add a 'battery' or 'power_supply' component to the circuit."
         })
 
-    # 2. Check for Floating Components
+    # 2. Check for a Load
+    no_load_issue = check_load_present(components)
+    if no_load_issue:
+        issues.append(no_load_issue)
+
+    # 3. Check for Floating Components
     floating_warnings = check_floating_components(components, connections)
     for warning_msg in floating_warnings:
         issues.append({
