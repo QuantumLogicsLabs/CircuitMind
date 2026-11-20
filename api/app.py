@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+import re
 import time
 import json
 
@@ -53,6 +54,41 @@ app.state.limiter = limiter
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+_DEFAULT_RATE_LIMITS = {
+    "generate":             "5/minute",
+    "explain":              "10/minute",
+    "diagnose":             "10/minute",
+    "export":               "10/minute",
+    "hint":                 "10/minute",
+    "generate_and_explain": "3/minute",
+}
+
+_RATE_LIMIT_RE = re.compile(r"^\d+/(?:second|minute|hour|day)$")
+
+
+def resolve_rate_limits(environ=None) -> dict:
+    """Resolve per-endpoint limits from RATE_LIMIT_<ENDPOINT> overrides.
+
+    Unset variables keep the built-in default. A value slowapi cannot parse
+    is rejected with a warning rather than failing at request time.
+    """
+    environ = os.environ if environ is None else environ
+    limits = {}
+    for endpoint, default in _DEFAULT_RATE_LIMITS.items():
+        env_var = f"RATE_LIMIT_{endpoint.upper()}"
+        raw = (environ.get(env_var) or "").strip()
+        if not raw:
+            limits[endpoint] = default
+        elif _RATE_LIMIT_RE.fullmatch(raw):
+            limits[endpoint] = raw
+        else:
+            logger.warning("Ignoring invalid %s=%r; using %s", env_var, raw, default)
+            limits[endpoint] = default
+    return limits
+
+
+RATE_LIMITS = resolve_rate_limits()
 
 # ── API KEY SECURITY ─────────────────────────────────────────────
 API_KEY = os.environ.get("CIRCUITMIND_API_KEY")
@@ -158,7 +194,7 @@ def health():
 # ── CORE ENDPOINTS ───────────────────────────────────────────────
 
 @app.post("/generate", tags=["core"])
-@rl("5/minute")
+@rl(RATE_LIMITS["generate"])
 def generate(
     request: Request,
     req: GenerateRequest,
@@ -174,7 +210,7 @@ def generate(
 
 
 @app.post("/explain", tags=["core"])
-@rl("10/minute")
+@rl(RATE_LIMITS["explain"])
 def explain(
     request: Request,
     req: CircuitRequest,
@@ -185,7 +221,7 @@ def explain(
 
 
 @app.post("/diagnose", tags=["core"])
-@rl("10/minute")
+@rl(RATE_LIMITS["diagnose"])
 def diagnose(
     request: Request,
     req: CircuitRequest,
@@ -196,7 +232,7 @@ def diagnose(
 
 
 @app.post("/export", tags=["core"])
-@rl("10/minute")
+@rl(RATE_LIMITS["export"])
 def export(
     request: Request,
     req: ExportRequest,
@@ -214,7 +250,7 @@ def export(
 
 
 @app.post("/hint", tags=["core"])
-@rl("10/minute")
+@rl(RATE_LIMITS["hint"])
 def hint(
     request: Request,
     req: HintRequest,
@@ -225,7 +261,7 @@ def hint(
 
 
 @app.post("/generate-and-explain", tags=["core"])
-@rl("3/minute")
+@rl(RATE_LIMITS["generate_and_explain"])
 def generate_and_explain(
     request: Request,
     req: GenerateRequest,
