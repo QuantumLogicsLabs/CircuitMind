@@ -168,6 +168,45 @@ def _hint_with_llm(payload: dict) -> str:
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
 
+def _find_gate_without_path_to_output(gates: list, wires: list):
+    """
+    Return the first logic gate whose output can never reach an OUTPUT gate.
+
+    Wiring alone does not make a gate useful: a sub-circuit that dead-ends
+    before any OUTPUT contributes nothing to the truth table.
+    """
+    output_ids = {
+        g.get("id") for g in gates
+        if str(g.get("type", "")).upper() == "OUTPUT"
+    }
+    if not output_ids:
+        return None
+
+    adjacency: dict = {}
+    for w in wires or []:
+        adjacency.setdefault(w.get("fromId"), set()).add(w.get("toId"))
+
+    def reaches_output(start) -> bool:
+        stack = [start]
+        seen = set()
+        while stack:
+            node = stack.pop()
+            if node in output_ids:
+                return True
+            if node in seen:
+                continue
+            seen.add(node)
+            stack.extend(adjacency.get(node, ()))
+        return False
+
+    for g in gates:
+        if str(g.get("type", "")).upper() in {"INPUT", "OUTPUT"}:
+            continue
+        if not reaches_output(g.get("id")):
+            return g
+    return None
+
+
 def _hint_with_rules(payload: dict) -> str:
     gates = payload.get("gates", [])
     wires = payload.get("wires", [])
@@ -198,6 +237,15 @@ def _hint_with_rules(payload: dict) -> str:
         return (
             f"'{names}' isn't connected to anything yet — a floating gate can't "
             "affect the output. Wire it in."
+        )
+
+    dead_end = _find_gate_without_path_to_output(gates, wires)
+    if dead_end:
+        name = dead_end.get("label") or f"gate{dead_end.get('id')}"
+        return (
+            f"'{name}' never reaches an OUTPUT gate — its result is discarded. "
+            "Route it, directly or through other gates, into one of the output "
+            "columns."
         )
 
     return (
