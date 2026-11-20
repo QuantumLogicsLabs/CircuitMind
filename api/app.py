@@ -25,6 +25,7 @@ from explain.explain_module import explain_circuit
 from diagnose.diagnose_module import diagnose_circuit
 from export.export_module import export_module
 from hint.hint_module import generate_hint
+from utils.component_resolver import COMPONENT_DB
 
 # ── LOGGING ──────────────────────────────────────────────────────
 logging.basicConfig(
@@ -242,3 +243,14 @@ def generate_and_explain(
         "explanation": explain_circuit(circuit),
         "diagnosis": diagnose_circuit(circuit),
     }
+
+
+# ── CATALOG ─────────────────────────────────────────────────────
+@app.get("/components", tags=["catalog"])
+def list_components():
+    """List the components the explainer and diagnoser understand."""
+    components = [
+        {"name": name, "role": info["role"], "description": info["description"]}
+        for name, info in sorted(COMPONENT_DB.items())
+    ]
+    return {"count": len(components), "components": components}
