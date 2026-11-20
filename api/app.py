@@ -20,7 +20,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.extension import _rate_limit_exceeded_handler
 
 # ── LOCAL MODULES ───────────────────────────────────────────────
-from generate.generate import generate_circuit
+from generate.generate import _RULES, generate_circuit
 from explain.explain_module import explain_circuit
 from diagnose.diagnose_module import diagnose_circuit
 from export.export_module import export_module
@@ -241,4 +241,23 @@ def generate_and_explain(
         "circuit": circuit,
         "explanation": explain_circuit(circuit),
         "diagnosis": diagnose_circuit(circuit),
+    }
+
+
+# ── CATALOG ─────────────────────────────────────────────────────
+@app.get("/circuits/templates", tags=["catalog"])
+def list_circuit_templates():
+    """List the circuits the rule-based generator can build without an LLM."""
+    return {
+        "count": len(_RULES),
+        "templates": [
+            {
+                "name": name,
+                "keywords": list(keywords),
+                "components": list(components),
+                "connections": list(connections),
+                "description": description,
+            }
+            for keywords, name, components, connections, description in _RULES
+        ],
     }
