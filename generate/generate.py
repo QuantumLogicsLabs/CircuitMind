@@ -61,6 +61,9 @@ _RULES = [
     (["xor", "xnor"],                           "XOR / XNOR Circuit",       ["input_a", "input_b", "xor", "output"],                ["input_a -> xor -> output", "input_b -> xor"], "2-input XOR gate circuit"),
     (["logic gate", "logic circuit"],           "Logic Gate Circuit",       ["input_a", "input_b", "and", "or", "output"],          ["input_a -> and -> or -> output", "input_b -> and", "input_b -> or"], "Combinational logic gate circuit"),
     # ── Analog / IC Circuits ─────────────────────────────────────────────────────
+    # Must precede the LED rule: these phrases contain the word "light".
+    (["night light", "dark detector", "automatic light", "light activated", "ldr circuit"],
+                                               "Automatic Night Light",    ["power_supply", "ldr", "resistor", "transistor", "led", "ground"], ["power_supply -> ldr -> transistor -> led -> ground", "power_supply -> resistor -> transistor"], "LDR-driven transistor switch that turns on an LED in the dark"),
     (["led", "light"],                         "LED Circuit",              ["battery", "resistor", "led"],                          ["battery -> resistor -> led"],                        "Basic LED circuit with current-limiting resistor"),
     (["motor"],                                "Motor Circuit",            ["battery", "switch", "dc_motor"],                       ["battery -> switch -> dc_motor"],                     "Basic DC motor circuit with on/off switch"),
     (["buzzer"],                               "Buzzer Circuit",           ["battery", "resistor", "buzzer"],                       ["battery -> resistor -> buzzer"],                     "Buzzer circuit with resistor for sound output"),
