@@ -64,6 +64,25 @@ def _check_warnings(components: list[str], unknown: list[str]) -> list[str]:
     return warnings
 
 
+def _check_connection_warnings(components: list[str], connections: list[str]) -> list[str]:
+    """Flag connections that mention a known component missing from the list."""
+    declared = set(components)
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for conn in connections:
+        sep = "->" if "->" in conn else "--"
+        for raw in conn.split(sep):
+            node = _fuzzy_match(_normalize(raw))
+            if not node or node == "ground":
+                continue
+            if node in COMPONENT_DB and node not in declared and node not in seen:
+                seen.add(node)
+                warnings.append(
+                    f"Connection references '{node}' but it is not listed in components."
+                )
+    return warnings
+
+
 # ── Main Entry Point ───────────────────────────────────────────────────────────
 
 def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
@@ -117,7 +136,8 @@ def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
         "explanation":       explanation,
         "component_details": component_details,
         "flow_description":  flow_description,
-        "warnings":          _check_warnings(components, unknown_components),
+        "warnings":          _check_warnings(components, unknown_components)
+                             + _check_connection_warnings(components, connections),
     }
 
 
