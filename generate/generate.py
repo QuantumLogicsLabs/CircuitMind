@@ -33,6 +33,10 @@ def validate_input(prompt: str) -> str:
         raise ValueError("Input cannot be empty. Try: 'make me a LED circuit'")
     if len(prompt.strip()) < 3:
         raise ValueError("Input too short. Try: 'make me a LED circuit'")
+    if not re.search(r"[A-Za-z0-9]", prompt):
+        raise ValueError(
+            "Input has no letters or digits. Try: 'make me a LED circuit'"
+        )
     if len(prompt) > 1000:
         raise ValueError("Input too long. Keep it under 1000 characters.")
     return prompt.strip()
