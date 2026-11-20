@@ -18,6 +18,28 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_CONFIDENCE = 0.25
+
+
+def resolve_confidence(environ=None) -> float:
+    """Read CV_CONFIDENCE, falling back to the default on missing or bad values."""
+    environ = os.environ if environ is None else environ
+    raw = (environ.get("CV_CONFIDENCE") or "").strip()
+    if not raw:
+        return DEFAULT_CONFIDENCE
+    try:
+        value = float(raw)
+    except ValueError:
+        logger.warning("Ignoring non-numeric CV_CONFIDENCE=%r; using %.2f", raw, DEFAULT_CONFIDENCE)
+        return DEFAULT_CONFIDENCE
+    if not 0.0 <= value <= 1.0:
+        logger.warning("CV_CONFIDENCE=%r is outside 0..1; using %.2f", raw, DEFAULT_CONFIDENCE)
+        return DEFAULT_CONFIDENCE
+    return value
+
+
+CONFIDENCE_THRESHOLD = resolve_confidence()
+
 
 # Dynamic pin/terminal layout per component type.
 # Replaces the old hardcoded assumption that every component has
@@ -130,7 +152,7 @@ def image_to_circuit_json(image_path: str, model_path: str = "./cv_module/models
         logger.warning("Custom model not found; using YOLOv8n baseline weights.")
 
     model   = YOLO(active_model)
-    results = model(image_path)[0]
+    results = model(image_path, conf=CONFIDENCE_THRESHOLD)[0]
 
     extractor             = CircuitTopologyExtractor()
     components, conns     = extractor.extract_topology(results)
@@ -157,7 +179,7 @@ def generate_circuit_netlist(image_path: str, model_path: str) -> str:
         raise FileNotFoundError(f"Model weights not found: {model_path}")
 
     model   = YOLO(model_path)
-    results = model.predict(source=image_path, conf=0.25, verbose=False)
+    results = model.predict(source=image_path, conf=CONFIDENCE_THRESHOLD, verbose=False)
 
     img = cv2.imread(image_path)
     if img is None:
