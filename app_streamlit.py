@@ -18,6 +18,7 @@ from generate.generate import generate_circuit as _generate_circuit
 from explain.explain_module import explain_circuit as _explain_circuit
 from diagnose.diagnose_module import diagnose_circuit as _diagnose_circuit
 from export.export_module import export_module as _export_module
+from utils.circuit_state import reuse_values
 
 load_dotenv()
 
@@ -44,6 +45,10 @@ def diagnose_circuit(data):
 
 def export_module(data, export_format="svg"):
     return _catch_errors(_export_module, data, export_format=export_format)
+
+def reuse_generated_circuit(result):
+    """Write the generated circuit into the other tabs' JSON inputs."""
+    st.session_state.update(reuse_values(result))
 
 
 # ── PAGE CONFIG ────────────────────────────────────────────────────────────────
@@ -87,6 +92,13 @@ with tab1:
 
             st.caption(
                 f"Source: {result.get('source', '')} | Confidence: {result.get('confidence', '')}"
+            )
+
+            st.button(
+                "↗️ Reuse this circuit in Explain, Diagnose & Export",
+                key="reuse_generated_circuit",
+                on_click=reuse_generated_circuit,
+                args=(result,),
             )
 
             # ── EXPORT SVG VIA API ──
