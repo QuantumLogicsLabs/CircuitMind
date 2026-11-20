@@ -18,6 +18,7 @@ from generate.generate import generate_circuit as _generate_circuit
 from explain.explain_module import explain_circuit as _explain_circuit
 from diagnose.diagnose_module import diagnose_circuit as _diagnose_circuit
 from export.export_module import export_module as _export_module
+from utils.downloads import build_download_files
 
 load_dotenv()
 
@@ -104,6 +105,19 @@ with tab1:
 
             st.markdown("**Circuit JSON:**")
             st.code(json.dumps(result, indent=2), language="json")
+
+            svg_markup = svg_res.get("svg_markup") if isinstance(svg_res, dict) else None
+            downloads = build_download_files(result, svg_markup)
+            download_cols = st.columns(len(downloads))
+            for download_col, download in zip(download_cols, downloads):
+                with download_col:
+                    st.download_button(
+                        download["label"],
+                        download["data"],
+                        file_name=download["filename"],
+                        mime=download["mime"],
+                        key=f"generate_download_{download['filename']}",
+                    )
 
 
 # ── TAB 2: EXPLAIN ─────────────────────────────────────────────────────────────
