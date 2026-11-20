@@ -62,6 +62,9 @@ _RULES = [
     (["logic gate", "logic circuit"],           "Logic Gate Circuit",       ["input_a", "input_b", "and", "or", "output"],          ["input_a -> and -> or -> output", "input_b -> and", "input_b -> or"], "Combinational logic gate circuit"),
     # ── Analog / IC Circuits ─────────────────────────────────────────────────────
     (["led", "light"],                         "LED Circuit",              ["battery", "resistor", "led"],                          ["battery -> resistor -> led"],                        "Basic LED circuit with current-limiting resistor"),
+    # Must precede the motor rule: these phrases also contain "motor".
+    (["motor speed", "speed controller", "motor controller", "variable speed motor"],
+                                               "Motor Speed Controller",   ["power_supply", "potentiometer", "dc_motor", "ground"], ["power_supply -> potentiometer -> dc_motor -> ground"], "Potentiometer-based speed control for a DC motor"),
     (["motor"],                                "Motor Circuit",            ["battery", "switch", "dc_motor"],                       ["battery -> switch -> dc_motor"],                     "Basic DC motor circuit with on/off switch"),
     (["buzzer"],                               "Buzzer Circuit",           ["battery", "resistor", "buzzer"],                       ["battery -> resistor -> buzzer"],                     "Buzzer circuit with resistor for sound output"),
     (["fan"],                                  "Fan Circuit",              ["battery", "switch", "capacitor", "dc_motor"],          ["battery -> switch -> capacitor -> dc_motor"],        "Fan circuit with capacitor for smooth startup"),
