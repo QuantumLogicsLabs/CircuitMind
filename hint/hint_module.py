@@ -168,6 +168,26 @@ def _hint_with_llm(payload: dict) -> str:
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
 
+def _find_duplicate_port_label(gates: list):
+    """Return (label, count) for the first repeated INPUT/OUTPUT label, else None."""
+    counts: dict = {}
+    for g in gates:
+        if str(g.get("type", "")).upper() not in {"INPUT", "OUTPUT"}:
+            continue
+        label = str(g.get("label") or "").strip()
+        if label:
+            key = label.lower()
+            counts[key] = counts.get(key, 0) + 1
+
+    for g in gates:
+        if str(g.get("type", "")).upper() not in {"INPUT", "OUTPUT"}:
+            continue
+        label = str(g.get("label") or "").strip()
+        if label and counts.get(label.lower(), 0) > 1:
+            return label, counts[label.lower()]
+    return None
+
+
 def _hint_with_rules(payload: dict) -> str:
     gates = payload.get("gates", [])
     wires = payload.get("wires", [])
@@ -189,6 +209,15 @@ def _hint_with_rules(payload: dict) -> str:
             f"Your circuit has {len(input_gates)} INPUT and {len(output_gates)} "
             f"OUTPUT gate(s), but this problem needs {len(inputs)} and "
             f"{len(outputs)}. Add the missing ones and label them to match."
+        )
+
+    duplicate = _find_duplicate_port_label(gates)
+    if duplicate:
+        label, count = duplicate
+        return (
+            f"{count} INPUT/OUTPUT gates are labelled '{label}'. Each port "
+            "needs a unique name so every truth-table column maps to exactly "
+            "one gate."
         )
 
     wired_ids = {w.get("fromId") for w in wires} | {w.get("toId") for w in wires}
