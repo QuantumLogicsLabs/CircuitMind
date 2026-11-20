@@ -1,0 +1,8 @@
+# CircuitMind — Development / test dependencies
+# Install with: pip install -r requirements-dev.txt
+#
+# Runtime packages first, so tests import the same versions the app uses.
+-r requirements.txt
+
+pytest>=8.0
+httpx>=0.27
