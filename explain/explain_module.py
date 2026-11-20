@@ -23,6 +23,35 @@ LED_OUTPUTS    = {"led"}
 MOTOR_OUTPUTS  = {"motor", "dc_motor"}
 BUZZER_OUTPUTS = {"buzzer"}
 
+# Canonical keys are snake_case; the prose should read like English.
+_READABLE_NAMES = {
+    "led":            "LED",
+    "lcd":            "LCD",
+    "ldr":            "LDR",
+    "dc_motor":       "DC motor",
+    "power_supply":   "power supply",
+    "solar_cell":     "solar cell",
+    "op_amp":         "op-amp",
+    "555_timer":      "555 timer",
+    "npn_transistor": "NPN transistor",
+    "pnp_transistor": "PNP transistor",
+    "mosfet":         "MOSFET",
+}
+
+_AN_NAMES = {"led", "lcd", "ldr", "op_amp"}
+_VOWEL_LETTERS = set("aeiou")
+
+
+def _display_name(name: str) -> str:
+    return _READABLE_NAMES.get(name, name.replace("_", " "))
+
+
+def _article(name: str) -> str:
+    display = _display_name(name)
+    if name in _AN_NAMES or display[:1].lower() in _VOWEL_LETTERS:
+        return "an"
+    return "a"
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -34,9 +63,11 @@ def _parse_flow(connections: list[str]) -> str:
         nodes = [n.strip() for n in conn.split(sep)]
         
         if len(nodes) == 1:
-            parts.append(f"The {nodes[0]} stands alone with no connections.")
+            parts.append(
+                f"The {_display_name(_normalize(nodes[0]))} stands alone with no connections."
+            )
         else:
-            arrow_chain = " → ".join(nodes)
+            arrow_chain = " → ".join(_display_name(_normalize(n)) for n in nodes)
             parts.append(f"Current flows from the {arrow_chain}.")
 
             # Add effect note
@@ -99,7 +130,10 @@ def explain_circuit(circuit_json: dict[str, Any]) -> dict[str, Any]:
     else:
         parts = []
         for detail in component_details:
-            parts.append(f"a {detail['name']} ({detail['role']}) that {detail['description']}")
+            parts.append(
+                f"{_article(detail['name'])} {_display_name(detail['name'])} "
+                f"({detail['role']}) that {detail['description']}"
+            )
 
         if len(parts) == 1:
             explanation = "This circuit uses " + parts[0] + "."
