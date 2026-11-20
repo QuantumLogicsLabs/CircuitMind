@@ -8,6 +8,7 @@ or run standalone for testing.
 """
 
 import os
+import importlib.util
 import logging
 import tempfile
 from pathlib import Path
@@ -18,6 +19,11 @@ from fastapi.responses import JSONResponse
 from cv_module.topology_extraction import image_to_circuit_json
 
 logger = logging.getLogger(__name__)
+
+
+def engine_available() -> bool:
+    """True when the optional ultralytics dependency is installed."""
+    return importlib.util.find_spec("ultralytics") is not None
 
 # ── Model path resolution ──────────────────────────────────────────────────────
 _MODEL_DIR   = Path(__file__).parent / "models"
@@ -32,9 +38,17 @@ router = APIRouter(prefix="/cv", tags=["computer-vision"])
 async def cv_status():
     """Health check for the CV module."""
     model_ready = os.path.exists(MODEL_PATH)
+    engine_ready = engine_available()
+    if not engine_ready:
+        status = "engine_missing"
+    elif model_ready:
+        status = "ready"
+    else:
+        status = "running_on_fallback_weights"
     return {
         "module":           "Computer Vision",
-        "status":           "ready" if model_ready else "running_on_fallback_weights",
+        "status":           status,
+        "engine_available": engine_ready,
         "model_path":       MODEL_PATH,
         "model_exists":     model_ready,
         "active_weights":   ACTIVE_MODEL,
@@ -58,6 +72,12 @@ async def image_to_circuit(
     """
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image (PNG/JPG/JPEG).")
+
+    if not engine_available():
+        raise HTTPException(
+            status_code=503,
+            detail="CV engine unavailable: install 'ultralytics' to enable image processing.",
+        )
 
     tmp_path = None
     try:
@@ -94,6 +114,12 @@ async def batch_process(
     images: list[UploadFile] = File(..., description="Multiple circuit images")
 ):
     """Process multiple circuit images and return results for each."""
+    if not engine_available():
+        raise HTTPException(
+            status_code=503,
+            detail="CV engine unavailable: install 'ultralytics' to enable image processing.",
+        )
+
     results = []
     for image in images:
         tmp_path = None
