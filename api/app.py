@@ -67,6 +67,25 @@ def verify_api_key(x_api_key: str = Header(default=None)):
             detail="Invalid or missing API key"
         )
 
+# ── RUNTIME CONFIG DIAGNOSTICS ──────────────────────────────────
+def log_runtime_config() -> None:
+    """Log settings that silently change behaviour when they are missing."""
+    if not API_KEY:
+        logger.warning(
+            "CIRCUITMIND_API_KEY is not set — every endpoint is open to the public."
+        )
+    if not os.environ.get("GROQ_API_KEY", "").strip():
+        logger.warning(
+            "GROQ_API_KEY is not set — LLM endpoints will fall back to rule-based output."
+        )
+    if not os.environ.get("RATE_LIMIT_REDIS_URL", "").strip():
+        logger.info(
+            "RATE_LIMIT_REDIS_URL is not set — rate limits are tracked per process."
+        )
+
+
+log_runtime_config()
+
 # ── CORS ─────────────────────────────────────────────────────────
 allowed_origins = os.environ.get(
     "ALLOWED_ORIGINS",
