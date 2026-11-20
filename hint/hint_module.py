@@ -168,6 +168,36 @@ def _hint_with_llm(payload: dict) -> str:
 
 # ── Rule-Based Fallback ────────────────────────────────────────────────────────
 
+_GATE_INPUT_ARITY = {
+    "AND": 2, "OR": 2, "NAND": 2, "NOR": 2, "XOR": 2, "XNOR": 2,
+    "NOT": 1, "BUFFER": 1,
+}
+
+
+def _find_partially_wired_gate(gates: list, wires: list):
+    """
+    Return (gate, wired_count, expected_count) for the first logic gate that
+    has at least one input wired but fewer than its type requires, else None.
+
+    Gates with zero incoming wires are skipped: they are reported as floating
+    by the previous check.
+    """
+    incoming: dict = {}
+    for w in wires or []:
+        to_id = w.get("toId")
+        if to_id is not None:
+            incoming[to_id] = incoming.get(to_id, 0) + 1
+
+    for g in gates:
+        expected = _GATE_INPUT_ARITY.get(str(g.get("type", "")).upper())
+        if not expected:
+            continue
+        wired = incoming.get(g.get("id"), 0)
+        if 0 < wired < expected:
+            return g, wired, expected
+    return None
+
+
 def _hint_with_rules(payload: dict) -> str:
     gates = payload.get("gates", [])
     wires = payload.get("wires", [])
@@ -198,6 +228,15 @@ def _hint_with_rules(payload: dict) -> str:
         return (
             f"'{names}' isn't connected to anything yet — a floating gate can't "
             "affect the output. Wire it in."
+        )
+
+    partial = _find_partially_wired_gate(gates, wires)
+    if partial:
+        gate, wired, expected = partial
+        name = gate.get("label") or f"gate{gate.get('id')}"
+        return (
+            f"'{name}' has only {wired} of {expected} input(s) wired. "
+            "Connect the missing input so the gate reacts to every case."
         )
 
     return (
