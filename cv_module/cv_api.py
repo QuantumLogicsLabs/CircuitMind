@@ -14,6 +14,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from cv_module.topology_extraction import image_to_circuit_json
 
@@ -66,9 +67,8 @@ async def image_to_circuit(
             tmp.write(await image.read())
             tmp_path = tmp.name
 
-        circuit_json = image_to_circuit_json(
-            image_path=tmp_path,
-            model_path=ACTIVE_MODEL,
+        circuit_json = await run_in_threadpool(
+            image_to_circuit_json, tmp_path, ACTIVE_MODEL
         )
 
         return JSONResponse(
@@ -103,7 +103,9 @@ async def batch_process(
                 tmp.write(await image.read())
                 tmp_path = tmp.name
 
-            circuit_json = image_to_circuit_json(tmp_path, ACTIVE_MODEL)
+            circuit_json = await run_in_threadpool(
+                image_to_circuit_json, tmp_path, ACTIVE_MODEL
+            )
             results.append({"filename": image.filename, "success": True, "circuit_data": circuit_json})
 
         except Exception as e:
